@@ -7,6 +7,10 @@ import InputDropdown from "../component/InputDropdown/InputDropdown";
 import RoadAthena from "../assets/svgs/RoadAthena";
 
 const HaryanaTab = () => {
+
+    // state declare 
+
+
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedMunicipalCouncil, setSelectedMunicipalCouncil] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
@@ -19,7 +23,8 @@ const HaryanaTab = () => {
   const [isFilterApplied, setIsFilterApplied] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
 
-  // Map layer configurations
+  // Map library configurations
+
   const mapLayers = {
     default: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -38,89 +43,82 @@ const HaryanaTab = () => {
         "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap",
       name: "Terrain",
     },
-   
   };
 
-  // Dummy GeoJSON data for roads
-  const dummyGeoJsonData = {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [75.85, 29.05],
-            [75.87, 29.07],
-            [75.89, 29.08],
-          ],
-        },
-        properties: {
-          name: "Road A",
-          quality: "Good",
-          length: "10 km",
-        },
-      },
-      {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [75.83, 29.06],
-            [75.85, 29.08],
-            [75.88, 29.09],
-          ],
-        },
-        properties: {
-          name: "Road B",
-          quality: "Average",
-          length: "12 km",
-        },
-      },
-      {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [75.84, 29.04],
-            [75.86, 29.05],
-            [75.87, 29.06],
-          ],
-        },
-        properties: {
-          name: "Road C",
-          quality: "Poor",
-          length: "8 km",
-        },
-      },
-    ],
-  };
 
-  // Extract unique cities from GeoJSON data
+
+  // Extract unique cities FUNCTION from GeoJSON data
   const extractUniqueCities = (geoData) => {
     if (!geoData || !Array.isArray(geoData.features)) return [];
-    
+
     const uniqueCities = new Set();
-    geoData.features.forEach(feature => {
+    geoData.features.forEach((feature) => {
       if (feature.properties?.city) {
         uniqueCities.add(feature.properties.city);
       }
     });
-    
-    return Array.from(uniqueCities).map(city => ({
+
+    return Array.from(uniqueCities).map((city) => ({
       label: city.charAt(0).toUpperCase() + city.slice(1),
-      value: city.toLowerCase()
+      value: city.toLowerCase(),
     }));
   };
 
-  // Load data from API on component mount
+  // Get bounds (ZOOMING FUNCTIONALITY) and center of a city
+  const getCityBounds = (city) => {
+    if (!geoJsonData || !Array.isArray(geoJsonData.features)) return null;
+
+    const cityFeatures = geoJsonData.features.filter(
+      (feature) =>
+        feature.properties?.city?.toLowerCase() === city.toLowerCase(),
+    );
+
+    if (cityFeatures.length === 0) return null;
+
+    let minLat = Infinity,
+      maxLat = -Infinity;
+    let minLng = Infinity,
+      maxLng = -Infinity;
+
+    cityFeatures.forEach((feature) => {
+      const coords = feature.geometry.coordinates;
+      if (
+        feature.geometry.type === "LineString" ||
+        feature.geometry.type === "MultiLineString"
+      ) {
+        const coordArray =
+          feature.geometry.type === "LineString" ? coords : coords.flat();
+        coordArray.forEach((coord) => {
+          const [lng, lat] = coord;
+          minLat = Math.min(minLat, lat);
+          maxLat = Math.max(maxLat, lat);
+          minLng = Math.min(minLng, lng);
+          maxLng = Math.max(maxLng, lng);
+        });
+      }
+    });
+
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const latDiff = maxLat - minLat;
+    const lngDiff = maxLng - minLng;
+    const maxDiff = Math.max(latDiff, lngDiff);
+    const zoom =
+      maxDiff < 0.01 ? 14 : maxDiff < 0.05 ? 13 : maxDiff < 0.1 ? 12 : 11;
+
+    return { center: [centerLat, centerLng], zoom };
+  };
+
+  // Load data from API on PAGE LOAD
   useEffect(() => {
     const fetchGeoJsonData = async () => {
       try {
-        const response = await axios.get('http://192.168.1.208:8000/api/fetchRoadData');
-        
+        const response = await axios.get(
+          "http://192.168.1.208:8000/api/fetchRoadData",
+        );
+
         console.log("API Response Status:", response);
-        const geoData = response.data.data 
+        const geoData = response.data.data;
         console.log("Raw API Response:", geoData);
         // Validate GeoJSON before setting state
         if (isValidGeoJSON(geoData)) {
@@ -129,14 +127,11 @@ const HaryanaTab = () => {
           const cities = extractUniqueCities(geoData);
           setCityOptions(cities);
         } else {
-          console.error('Invalid GeoJSON received, using dummy data');
-          setGeoJsonData(dummyGeoJsonData);
+          console.error("Invalid GeoJSON received");
           setCityOptions([]);
         }
       } catch (error) {
-        console.log('Error fetching GeoJSON data:', error);
-        setGeoJsonData(dummyGeoJsonData);
-        setCityOptions([]);
+        console.log("Error fetching GeoJSON data:", error);
       }
     };
     fetchGeoJsonData();
@@ -172,18 +167,18 @@ const HaryanaTab = () => {
     { label: "Road D", value: "road_d" },
   ];
 
-//   Function to validate GeoJSON structure
+  //   Function to validate GeoJSON structure
   const isValidGeoJSON = (data) => {
-    if (!data || typeof data !== 'object') {
-      console.error('GeoJSON is not an object:', data);
+    if (!data || typeof data !== "object") {
+      console.error("GeoJSON is not an object:", data);
       return false;
     }
-    if (data.type !== 'FeatureCollection' && data.type !== 'Feature') {
-      console.error('Invalid GeoJSON type:', data.type);
+    if (data.type !== "FeatureCollection" && data.type !== "Feature") {
+      console.error("Invalid GeoJSON type:", data.type);
       return false;
     }
-    if (data.type === 'FeatureCollection' && !Array.isArray(data.features)) {
-      console.error('FeatureCollection does not have features array:', data);
+    if (data.type === "FeatureCollection" && !Array.isArray(data.features)) {
+      console.error("FeatureCollection does not have features array:", data);
       return false;
     }
     return true;
@@ -194,52 +189,52 @@ const HaryanaTab = () => {
   };
 
   // Fetch GeoJSON data with filter parameters
-//   const fetchGeoJsonWithFilters = async () => {
-//     try {
-//       // Build query parameters from selected values
-//       const params = new URLSearchParams();
-//       if (selectedCity) params.append("city", selectedCity);
-//       if (selectedMunicipalCouncil)
-//         params.append("municipalCouncil", selectedMunicipalCouncil);
-//       if (selectedWard) params.append("ward", selectedWard);
-//       if (selectedRoad) params.append("road", selectedRoad);
+  //   const fetchGeoJsonWithFilters = async () => {
+  //     try {
+  //       // Build query parameters from selected values
+  //       const params = new URLSearchParams();
+  //       if (selectedCity) params.append("city", selectedCity);
+  //       if (selectedMunicipalCouncil)
+  //         params.append("municipalCouncil", selectedMunicipalCouncil);
+  //       if (selectedWard) params.append("ward", selectedWard);
+  //       if (selectedRoad) params.append("road", selectedRoad);
 
-//       // Use the actual API endpoint
-//       const url = `http://192.168.1.208:8000/api/fetchRoadData`;
-      
-//       const response = await fetch(url);
+  //       // Use the actual API endpoint
+  //       const url = `http://192.168.1.208:8000/api/fetchRoadData`;
 
-//       if (!response.ok) {
-//         console.error('API Error:', response.status);
-//         setGeoJsonData(dummyGeoJsonData);
-//         return;
-//       }
+  //       const response = await fetch(url);
 
-//       const data = await response.json();
-//       console.log('Filtered GeoJSON Data:', data);
-//       setGeoJsonData(data);
+  //       if (!response.ok) {
+  //         console.error('API Error:', response.status);
+  //         setGeoJsonData(dummyGeoJsonData);
+  //         return;
+  //       }
 
-//         // Zoom to first feature's coordinate if available
-//         if (geoData.features && geoData.features.length > 0) {
-//           const coords = geoData.features[0].geometry.coordinates;
-//           if (Array.isArray(coords[0])) {
-//             // LineString or Polygon
-//             setMapCenter([coords[0][1], coords[0][0]]);
-//             setMapZoom(12);
-//           }
-        
-//       } else {
-//         console.error('Invalid GeoJSON in filter response, using dummy data');
-//         setGeoJsonData(dummyGeoJsonData);
-//       }
-//     } catch (error) {
-//       console.error("Error fetching GeoJ data:", error);
-//       setGeoJsonData(dummyGeoJsonData);
-//     }
+  //       const data = await response.json();
+  //       console.log('Filtered GeoJSON Data:', data);
+  //       setGeoJsonData(data);
 
-//     // Force map re-render
-//     setMapKey((prev) => prev + 1);
-//   };
+  //         // Zoom to first feature's coordinate if available
+  //         if (geoData.features && geoData.features.length > 0) {
+  //           const coords = geoData.features[0].geometry.coordinates;
+  //           if (Array.isArray(coords[0])) {
+  //             // LineString or Polygon
+  //             setMapCenter([coords[0][1], coords[0][0]]);
+  //             setMapZoom(12);
+  //           }
+
+  //       } else {
+  //         console.error('Invalid GeoJSON in filter response, using dummy data');
+  //         setGeoJsonData(dummyGeoJsonData);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching GeoJ data:", error);
+  //       setGeoJsonData(dummyGeoJsonData);
+  //     }
+
+  //     // Force map re-render
+  //     setMapKey((prev) => prev + 1);
+  //   };
 
   const handleApplyFilter = () => {
     setIsFilterApplied(true);
@@ -247,13 +242,17 @@ const HaryanaTab = () => {
   };
 
   const handleResetFilter = () => {
-    setSelectedCity("");
     setSelectedMunicipalCouncil("");
     setSelectedWard("");
     setSelectedRoad("");
-    setMapCenter([29.0588, 75.8507]);
-    setMapZoom(10);
-    setGeoJsonData(dummyGeoJsonData);
+
+
+    // Keep city selected to maintain zoom functionality
+   
+    if (!selectedCity) {
+      setMapCenter([29.0588, 75.8507]);
+      setMapZoom(10);
+    }
     setMapKey((prev) => prev + 1);
     setIsFilterApplied(false);
   };
@@ -276,27 +275,19 @@ const HaryanaTab = () => {
     setSelectedRoad("");
   }, [selectedWard]);
 
-  // Function to style GeoJSON features based on quality
-  const getFeatureStyle = (feature) => {
-    const quality = feature.properties?.quality;
-    let color = "#808080"; // Default grey
-
-    if (quality === "Good") {
-      color = "#10b981"; // Green
-    } else if (quality === "Average") {
-      color = "#f59e0b"; // Amber
-    } else if (quality === "Poor") {
-      color = "#ef4444"; // Red
+  // Zoom to selected city
+  useEffect(() => {
+    if (selectedCity) {
+      const bounds = getCityBounds(selectedCity);
+      if (bounds) {
+        setMapCenter(bounds.center);
+        setMapZoom(bounds.zoom);
+        setMapKey((prev) => prev + 1);
+      }
     }
+  }, [selectedCity]);
 
-    return {
-      color: color,
-      weight: 3,
-      opacity: 0.8,
-      dashArray: quality === "Poor" ? "5, 5" : "0",
-    };
-  };
-
+ 
   // Handle GeoJSON feature click
   const onEachFeature = (feature, layer) => {
     const props = feature.properties;
@@ -311,7 +302,7 @@ const HaryanaTab = () => {
     layer.setStyle(getFeatureStyle(feature));
   };
 
-  //   const legend = [
+  //  STATS DUMMY DATA 
   const stats = [
     {
       label: "Total Roads",
@@ -505,22 +496,7 @@ const HaryanaTab = () => {
           </div>
         </div>
 
-        {/* Legend */}
-        {/* <div className="bg-white rounded-2xl shadow-md px-5 py-4 w-full lg:w-auto">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-              Road Quality Legend
-            </p> */}
-        {/* <div className="flex flex-col gap-2.5">
-              {legend.map(({ label, color }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <div className={`w-7 h-1.5 rounded-full ${color} shrink-0`} />
-                  <span className="text-xs font-medium text-gray-600">
-                    {label}
-                  </span>
-                </div> */}
-        {/* ))} */}
-        {/* </div> */}
-        {/* </div> */}
+       
       </div>
     </div>
   );
