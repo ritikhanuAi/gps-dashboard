@@ -1,11 +1,15 @@
 import { useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <>
-      <div>Haryana-Dashboard Project</div>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />         
+        </Routes>
+      </BrowserRouter>
     </>
   );
 }

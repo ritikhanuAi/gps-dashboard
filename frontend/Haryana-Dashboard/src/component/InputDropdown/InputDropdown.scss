@@ -1,0 +1,198 @@
+.dropdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+
+  .label-container {
+    display: flex;
+
+    .label-text {
+      font-size: 0.9rem;
+      font-family: "myriad-pro-semibold";
+      color: #000000;
+      font-weight: bold;
+    }
+  }
+
+  .main-dropdown-container {
+    position: relative;
+
+    .dropdown-header {
+      padding: 8px 12px;
+      border: 1px solid #ede8dc;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      color: #131313;
+      background-color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 5px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      transition: border-color 0.3s, box-shadow 0.3s;
+
+      &:hover {
+        border-color: #131313a6;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+        background-color: #f6f6f6cc;
+
+        &:hover {
+          border-color: #ede8dc;
+        }
+      }
+
+      .placeholder-text {
+        font-size: 0.85rem;
+        font-family: "myriad-pro-regular";
+        color: #131313a6;
+      }
+
+      .dropdown-arrow {
+        font-size: 0.8rem;
+        flex-shrink: 0;
+      }
+
+      .dropdown-icon {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      p {
+        flex-grow: 1;
+        /* Makes the text take up the available space */
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        /* Adds '...' if text overflows */
+        margin: 0;
+      }
+    }
+
+    .dropdown-header.active {
+      border-color: #595959;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .dropdown-options-container {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 9999;
+      width: 100%;
+      overflow: visible !important;
+      background-color: white;
+
+      .search-container {
+        padding: 0.5rem 10px;
+        border-top: 1px solid #131313a6;
+        border-left: 1px solid #131313a6;
+        border-right: 1px solid #131313a6;
+        border-radius: 5px 5px 0 0;
+        background-color: #ffffff;
+        margin-top: 5px;
+
+        .search-input {
+          width: 100%;
+          font-size: 0.85rem;
+          font-family: "myriad-pro-regular";
+          padding: 0;
+          outline: none;
+          border: none;
+        }
+      }
+
+      .dropdown-options {
+        width: 100%;
+        border: 1px solid #131313a6;
+        background-color: #ffffff;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        max-height: 250px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+
+        .dropdown-option {
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+
+          p {
+            padding: 10px 15px;
+            font-size: 0.85rem;
+            font-family: "myriad-pro-regular";
+            color: #131313;
+            line-height: 1rem;
+
+            .highlight-text {
+              background-color: #ffc107;
+              font-weight: bold;
+            }
+          }
+        }
+
+        .dropdown-option:hover p {
+          background-color: #939185;
+          color: #ffffff;
+        }
+
+        .dropdown-option.selected p {
+          background-color: #131313;
+          color: #ffffff;
+        }
+
+        .no-result {
+          cursor: not-allowed;
+          padding: 10px 15px;
+          font-size: 0.85rem;
+          font-family: "myriad-pro-regular";
+          color: #131313a6;
+          font-style: italic;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 990px) {
+  .dropdown-container {
+    gap: 5px;
+
+    .label-container {
+      .label-text {
+        font-size: 0.8rem;
+      }
+    }
+
+    .main-dropdown-container {
+      .dropdown-header {
+        font-size: 0.75rem;
+      }
+
+      .dropdown-options-container {
+        .search-container {
+          padding: 0.3rem 8px;
+
+          .search-input {
+            font-size: 0.75rem;
+          }
+        }
+
+        .dropdown-options {
+          .dropdown-option {
+            p {
+              padding: 8px 12px;
+              font-size: 0.75rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
