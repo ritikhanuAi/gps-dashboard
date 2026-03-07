@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  --bg-light: #ffffff;
+  --bg-light-grey: #f6f6f6;
+  --bg-dark: #131313;
+  --text-primary: #131313;
+  --text-primary-light: #131313a6;
+  --text-secondary: #ffffff;
+  --text-medium-grey: #595959;
+  --text-light-grey: #f6f6f6cc;
+  --success: #28a745;
+  --warning: #ffc107;
+  --danger: #dc3545;
+  --border: #ede8dc;
+  --light-shadow: #939185;
+  --soft-gray: #f5f7fb;
+  --color-gray: #dfe2e6;
+  --accent-secondary: #374774;
+  --danger-light: #f47a65;
+  --danger-lighter: #F58774;
+  --danger: #dc3545;
+}
+
+/* --------------------myriad pro - primary-------------------- */
+@font-face {
+  font-family: "myriad-pro-bold";
+  src: url("./assets/fonts/MyriadPro/MYRIADPRO-BOLD.OTF");
+}
+
+.myriad-pro-bold {
+  font-family: "myriad-pro-bold";
+}
+
+@font-face {
+  font-family: "myriad-pro-bold-italic";
+  src: url("./assets/fonts/MyriadPro/MYRIADPRO-BOLDIT.OTF");
+}
+
+.myriad-pro-bold-italic {
+  font-family: "myriad-pro-bold-italic";
+}
+
+@font-face {
+  font-family: "myriad-pro-regular";
+  src: url("./assets/fonts/MyriadPro/MYRIADPRO-REGULAR.OTF");
+}
+
+.myriad-pro-regular {
+  font-family: "myriad-pro-regular";
+}
+
+@font-face {
+  font-family: "myriad-pro-semibold";
+  src: url("./assets/fonts/MyriadPro/MYRIADPRO-SEMIBOLD.OTF");
+}
+
+.myriad-pro-semibold {
+  font-family: "myriad-pro-semibold";
+}
+
+@font-face {
+  font-family: "myriad-pro-semibold-italic";
+  src: url("./assets/fonts/MyriadPro/MYRIADPRO-SEMIBOLDIT.OTF");
+}
+
+.myriad-pro-semibold-italic {
+  font-family: "myriad-pro-semibold-italic";
+}
+
+html,
+body {
+  height: 100%;
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: auto;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font-family: "Poppins", sans-serif;
+  scrollbar-width: none;
+  overflow: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr {
+  margin: 0;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* Thin scrollbar styles */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 4px;
+  border: 2px solid transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #a8a8a8;
+}
+
+/* Error text style */
+.error-text {
+  font-family: "myriad-pro-regular";
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1rem;
+  margin-top: 3px;
+}
+
+/* Button styles */
+.btn-accent-secondary {
+  background-color: var(--accent-secondary);
+  color: white;
+  transition: opacity 0.3s ease;
+}
+
+.btn-accent-secondary:hover {
+  opacity: 0.9;
+}
+
+.btn-danger-light {
+  background-color: var(--danger);
+  color: white;
+  transition: opacity 0.3s ease;
+}
+
+.btn-danger-light:hover {
+  opacity: 0.9;
+}
+
+/* Leaflet map styles */
+.leaflet-top {
+  z-index: 998 !important;
+}
+
+.leaflet-container {
+  z-index: 9;
+}
