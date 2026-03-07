@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
+import axios from "axios";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import InputDropdown from "../component/InputDropdown/InputDropdown";
@@ -16,6 +17,7 @@ const HaryanaTab = () => {
   const [mapZoom, setMapZoom] = useState(10);
   const [mapKey, setMapKey] = useState(0);
   const [isFilterApplied, setIsFilterApplied] = useState(false);
+  const [cityOptions, setCityOptions] = useState([]);
 
   // Map layer configurations
   const mapLayers = {
@@ -94,25 +96,49 @@ const HaryanaTab = () => {
     ],
   };
 
+  // Extract unique cities from GeoJSON data
+  const extractUniqueCities = (geoData) => {
+    if (!geoData || !Array.isArray(geoData.features)) return [];
+    
+    const uniqueCities = new Set();
+    geoData.features.forEach(feature => {
+      if (feature.properties?.city) {
+        uniqueCities.add(feature.properties.city);
+      }
+    });
+    
+    return Array.from(uniqueCities).map(city => ({
+      label: city.charAt(0).toUpperCase() + city.slice(1),
+      value: city.toLowerCase()
+    }));
+  };
+
   // Load data from API on component mount
   useEffect(() => {
     const fetchGeoJsonData = async () => {
       try {
-        const response = await fetch('http://192.168.1.208:8000/api/fetchRoadData');
+        const response = await axios.get('http://192.168.1.208:8000/api/fetchRoadData');
         
         console.log("API Response Status:", response);
-        const geoData = await response.data.data;
+        const geoData = response.data.data 
         console.log("Raw API Response:", geoData);
         // Validate GeoJSON before setting state
-        // if (isValidGeoJSON(geoData)) {
+        if (isValidGeoJSON(geoData)) {
           setGeoJsonData(geoData);
-        // } 
+          // Extract and set unique cities
+          const cities = extractUniqueCities(geoData);
+          setCityOptions(cities);
+        } else {
+          console.error('Invalid GeoJSON received, using dummy data');
+          setGeoJsonData(dummyGeoJsonData);
+          setCityOptions([]);
         }
-       catch (error) {
+      } catch (error) {
         console.log('Error fetching GeoJSON data:', error);
         setGeoJsonData(dummyGeoJsonData);
+        setCityOptions([]);
       }
-    };                                                                                                                                                                                                                                                                                           
+    };
     fetchGeoJsonData();
   }, []);
 
@@ -123,13 +149,6 @@ const HaryanaTab = () => {
     { label: "Rohtak", value: "rohtak" },
     { label: "Panipat", value: "panipat" },
     { label: "Sunaria", value: "sunaria" },
-  ];
-
-  const cityOptions = [
-    { label: "Kalanaur City", value: "kalanaur_city" },
-    { label: "Hisar City", value: "hisar_city" },
-    { label: "Rohtak City", value: "rohtak_city" },
-    { label: "Panipat City", value: "panipat_city" },
   ];
 
   const municipalCouncilOptions = [
@@ -175,48 +194,52 @@ const HaryanaTab = () => {
   };
 
   // Fetch GeoJSON data with filter parameters
-  const fetchGeoJsonWithFilters = async () => {
-    try {
-      // Build query parameters from selected values
-      const params = new URLSearchParams();
-      if (selectedCity) params.append("city", selectedCity);
-      if (selectedMunicipalCouncil)
-        params.append("municipalCouncil", selectedMunicipalCouncil);
-      if (selectedWard) params.append("ward", selectedWard);
-      if (selectedRoad) params.append("road", selectedRoad);
+//   const fetchGeoJsonWithFilters = async () => {
+//     try {
+//       // Build query parameters from selected values
+//       const params = new URLSearchParams();
+//       if (selectedCity) params.append("city", selectedCity);
+//       if (selectedMunicipalCouncil)
+//         params.append("municipalCouncil", selectedMunicipalCouncil);
+//       if (selectedWard) params.append("ward", selectedWard);
+//       if (selectedRoad) params.append("road", selectedRoad);
 
-      // Use the actual API endpoint
-      const url = `http://192.168.1.208:8000/api/fetchRoadData`;
+//       // Use the actual API endpoint
+//       const url = `http://192.168.1.208:8000/api/fetchRoadData`;
       
-      const response = await fetch(url);
+//       const response = await fetch(url);
 
-      if (!response.ok) {
-        console.error('API Error:', response.status);
-        setGeoJsonData(dummyGeoJsonData);
-        return;
-      }
+//       if (!response.ok) {
+//         console.error('API Error:', response.status);
+//         setGeoJsonData(dummyGeoJsonData);
+//         return;
+//       }
 
-      const data = await response.json();
-      console.log('Filtered GeoJSON Data:', data);
-      setGeoJsonData(data);
+//       const data = await response.json();
+//       console.log('Filtered GeoJSON Data:', data);
+//       setGeoJsonData(data);
 
-      // Zoom to first feature's coordinate if available
-      if (data.features && data.features.length > 0) {
-        const coords = data.features[0].geometry.coordinates;
-        if (Array.isArray(coords[0])) {
-          // LineString or Polygon
-          setMapCenter([coords[0][1], coords[0][0]]);
-          setMapZoom(12);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching GeoJ data:", error);
-      setGeoJsonData(dummyGeoJsonData);
-    }
+//         // Zoom to first feature's coordinate if available
+//         if (geoData.features && geoData.features.length > 0) {
+//           const coords = geoData.features[0].geometry.coordinates;
+//           if (Array.isArray(coords[0])) {
+//             // LineString or Polygon
+//             setMapCenter([coords[0][1], coords[0][0]]);
+//             setMapZoom(12);
+//           }
+        
+//       } else {
+//         console.error('Invalid GeoJSON in filter response, using dummy data');
+//         setGeoJsonData(dummyGeoJsonData);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching GeoJ data:", error);
+//       setGeoJsonData(dummyGeoJsonData);
+//     }
 
-    // Force map re-render
-    setMapKey((prev) => prev + 1);
-  };
+//     // Force map re-render
+//     setMapKey((prev) => prev + 1);
+//   };
 
   const handleApplyFilter = () => {
     setIsFilterApplied(true);
