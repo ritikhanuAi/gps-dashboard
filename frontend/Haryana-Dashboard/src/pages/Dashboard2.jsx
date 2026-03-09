@@ -528,11 +528,11 @@ const HaryanaTab = () => {
           </div>
         )}
 
-        {!isLoadingCityData && selectedCities.length === 0 && (
+        {/* {!isLoadingCityData && selectedCities.length === 0 && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm font-semibold">
             📍 Select a city to enable other filters
           </div>
-        )}
+        )} */}
       </div>
 
       {/* ── map part── */}

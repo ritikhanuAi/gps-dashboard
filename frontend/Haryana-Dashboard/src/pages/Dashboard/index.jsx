@@ -1,9 +1,8 @@
 import "leaflet/dist/leaflet.css";
 import { useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
-import RoadAthena from "../../assets/svgs/RoadAthena";
-import FilterControls from "./components/FilterControls";
-import FilterStatus from "./components/FilterStatus";
+import { RoadAthena, City, Muncipal, Road, Ward } from "../../assets/svgs";
+import InputDropdown from "../../component/InputDropdown/InputDropdown";
 import { MAP_LAYERS, STATS_TEMPLATE } from "./constants";
 import { useFilterCascade, useMapAnimation, useRoadData } from "./hooks";
 import {
@@ -45,7 +44,13 @@ const Dashboard = () => {
     municipalCouncilOptions,
     wardOptions,
     roadOptions,
-  } = useFilterCascade(geoJsonData, setFilteredGeoJsonData, setMapCenter, setMapZoom, setMapKey);
+  } = useFilterCascade(
+    geoJsonData,
+    setFilteredGeoJsonData,
+    setMapCenter,
+    setMapZoom,
+    setMapKey,
+  );
 
   // Map animation
   const { isAnimating, animatedMapCenter, animatedMapZoom, animatedMapKey } =
@@ -103,6 +108,42 @@ const Dashboard = () => {
   const handleSelectAllRoads = () => setSelectedRoads([...roadOptions]);
   const handleApplyFilter = () => setIsFilterApplied(true);
 
+  // Dropdown change handlers
+  const handleCityDropdownChange = (event) => {
+    const city = event.selectedItem;
+    setSelectedCities([city]);
+    if (geoJsonData) {
+      const filteredData = filterGeoJsonByCities(geoJsonData, [city]);
+      setFilteredGeoJsonData(filteredData);
+    }
+  };
+
+  const handleMCDropdownChange = (event) => {
+    const value = event.selectedItem.label;
+    setSelectedMunicipalCouncil(value);
+    setSelectedMunicipalCouncilOption(event.selectedItem);
+    setSelectedWard("");
+    setSelectedRoads([]);
+  };
+
+  const handleWardDropdownChange = (event) => {
+    const value = event.selectedItem.label;
+    setSelectedWard(value);
+    setSelectedRoads([]);
+  };
+
+  const handleRoadDropdownChange = (event) => {
+    const road = event.selectedItem;
+    setSelectedRoads((prev) => {
+      const isAlreadySelected = prev.some((r) => r.value === road.value);
+      if (isAlreadySelected) {
+        return prev.filter((r) => r.value !== road.value);
+      } else {
+        return [...prev, road];
+      }
+    });
+  };
+
   const handleResetFilter = () => {
     setSelectedMunicipalCouncil("");
     setSelectedWard("");
@@ -155,162 +196,185 @@ const Dashboard = () => {
   const totalRoadsOnMap = filteredGeoJsonData?.features?.length || 0;
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb] relative">
+    <div className="min-h-screen bg-gray-100">
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200/80 px-5 sm:px-6 py-2.5 flex items-center justify-between z-50">
-        <div className="flex items-center gap-2.5">
-          <RoadAthena width={22} height={28} />
-          <span className="text-[15px] font-semibold text-gray-900 myriad-pro-semibold tracking-tight">
-            RoadAthena
-          </span>
+      <div className="sticky top-0 w-full bg-white border-gray-300 shadow-lg px-4 sm:px-6 lg:px-6 py-3 flex items-center gap-2 z-50">
+        <RoadAthena width={20} height={26} />
+        <span className="text-sm font-semibold text-gray-800 myriad-pro-semibold">
+          RoadAthena
+        </span>
+      </div>
+
+      {/* ── Filter Row ── */}
+      <div className="bg-white border-b rounded-lg border-gray-100 shadow-sm px-4 sm:px-6 lg:px-8 py-4 m-4 mb-2 ">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <InputDropdown
+            label="City"
+            value={selectedCities.length > 0 ? selectedCities[0].label : ""}
+            onChange={handleCityDropdownChange}
+            optionList={cityOptions}
+            placeholder={"Select City"}
+            name="city"
+            icon={<City width={21} />}
+            width="100%"
+            isSearchable
+          />
+          <InputDropdown
+            label="Municipal Council"
+            value={selectedMunicipalCouncil}
+            onChange={handleMCDropdownChange}
+            optionList={municipalCouncilOptions}
+            placeholder={"Select Council"}
+            name="municipalCouncil"
+            icon={<Muncipal width={21} />}
+            width="100%"
+            isSearchable
+          />
+          <InputDropdown
+            label="Ward"
+            value={selectedWard}
+            onChange={handleWardDropdownChange}
+            optionList={wardOptions}
+            placeholder={"Select Ward"}
+            name="ward"
+            icon={<Ward width={21} />}
+            width="100%"
+            isSearchable
+          />
+          <InputDropdown
+            label="Road"
+            value={selectedRoads.length > 0 ? selectedRoads[0].label : ""}
+            onChange={handleRoadDropdownChange}
+            optionList={roadOptions}
+            name="road"
+            icon={<Road width={21} />}
+            width="100%"
+            placeholder="Select Road"
+            isSearchable
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleApplyFilter}
+              className="px-4 py-2 btn-accent-secondary rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
+            >
+              Apply Filter
+            </button>
+            <button
+              onClick={handleResetFilter}
+              className="px-4 py-2 btn-danger-light rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
+            >
+              Clear Filter
+            </button>
+          </div>
         </div>
-        {/* Breadcrumb context */}
-        {breadcrumb.length > 0 && (
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400 myriad-pro-regular">
-            {breadcrumb.map((item, i) => (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-gray-300">›</span>}
-                <span className={i === breadcrumb.length - 1 ? "text-gray-600 font-medium" : ""}>
-                  {item}
-                </span>
-              </span>
+      </div>
+
+      {/* ── Map Part ── */}
+      <div className="px-4 sm:px-6 lg:px-6">
+        {/* ── Map Panel ── */}
+        <div className="w-full rounded-lg overflow-hidden mb-3">
+          {/* Map Toolbar */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200">
+            <label className="text-sm font-semibold text-gray-700 myriad-pro-semibold">
+              Layer:
+            </label>
+            <select
+              value={mapLayer}
+              onChange={(e) => setMapLayer(e.target.value)}
+              className="px-3 py-2 rounded-lg text-sm border border-gray-300 bg-white text-gray-700 cursor-pointer"
+            >
+              {Object.entries(mapLayers).map(([key, layer]) => (
+                <option key={key} value={key}>
+                  {layer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Leaflet Map */}
+          <div className="h-[420px] sm:h-[500px] lg:h-[500px] w-full">
+            {filteredGeoJsonData && isValidGeoJSON(filteredGeoJsonData) ? (
+              <MapContainer
+                key={animatedMapKey}
+                center={animatedMapCenter}
+                zoom={animatedMapZoom}
+                style={{ height: "100%", width: "100%" }}
+                zoomAnimation={true}
+                fadeAnimation={true}
+                markerZoomAnimation={true}
+                animate={true}
+                duration={0.75}
+                easeLinearity={0.25}
+              >
+                <TileLayer
+                  url={mapLayers[mapLayer].url}
+                  attribution={mapLayers[mapLayer].attribution}
+                />
+                <GeoJSON
+                  data={filteredGeoJsonData}
+                  onEachFeature={onEachFeature}
+                />
+              </MapContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-gray-50">
+                <p className="text-gray-500">Loading map...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Road Detail — Below Map ── */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Context Info & Stats */}
+        <div className="bg-white shadow-md rounded-lg border-gray-100 ml-4 mr-4 px-5 py-4 w-full lg:w-full">
+          {/* Context Info */}
+          <div className="mb-2 pb-4 border-b border-gray-200">
+            <p className="text-xl font-bold text-gray-800 truncate myriad-pro-semibold">
+              Region Overview
+            </p>
+            <p className="text-base text-gray-400 mt-0.5 myriad-pro-regular">
+              {selectedCities.length > 0
+                ? selectedCities.map((c) => c.label).join(", ")
+                : "City"}{" "}
+              — {selectedMunicipalCouncil || "Council"}{" "}
+              {selectedWard ? `Ward ${selectedWard}` : "Ward"} ·{" "}
+              {selectedRoads.length > 0
+                ? selectedRoads.length === 1
+                  ? selectedRoads[0].label
+                  : `${selectedRoads.length} roads`
+                : "Road"}
+            </p>
+          </div>
+
+          {/* Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {STATS_TEMPLATE.map(({ label, value, unit, icon, borderColor }) => (
+              <div
+                key={label}
+                className={`bg-gray-50 rounded-lg px-4 py-4 shadow-sm border-l-4 ${borderColor || "border-l-blue-500"}`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-lg">{icon}</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide myriad-pro-semibold">
+                    {label}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-center gap-1.5">
+                  <span className="text-2xl font-bold text-gray-900 myriad-pro-regular">
+                    {isFilterApplied ? value : "NA"}
+                  </span>
+                  {unit && (
+                    <span className="text-xs font-medium text-gray-600">
+                      {isFilterApplied ? unit : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
-        )}
-      </header>
-
-      {/* ── Main Content ── */}
-      <main className="pt-[52px]">
-        {/* Filter Section */}
-        <section className="bg-white border-b border-gray-200/60 px-4 sm:px-6 lg:px-8 py-4">
-          <FilterControls
-            selectedCities={selectedCities}
-            cityOptions={cityOptions}
-            isLoadingCityData={isLoadingCityData}
-            onCityChange={handleCityChange}
-            onClearSelection={handleClearSelection}
-            selectedMunicipalCouncil={selectedMunicipalCouncil}
-            onMunicipalCouncilChange={handleMunicipalCouncilChange}
-            municipalCouncilOptions={municipalCouncilOptions}
-            isLoadingMunicipalCouncil={isLoadingMunicipalCouncil}
-            selectedWard={selectedWard}
-            onWardChange={handleWardChange}
-            wardOptions={wardOptions}
-            isLoadingWard={isLoadingWard}
-            selectedRoads={selectedRoads}
-            onRoadToggle={handleRoadToggle}
-            onClearRoads={handleClearRoads}
-            onSelectAllRoads={handleSelectAllRoads}
-            roadOptions={roadOptions}
-            isLoadingRoad={isLoadingRoad}
-            onApplyFilter={handleApplyFilter}
-            onClearFilter={handleResetFilter}
-          />
-
-          <FilterStatus
-            isLoadingCityData={isLoadingCityData}
-            selectedCities={selectedCities}
-          />
-        </section>
-
-        {/* Map Section */}
-        <section className="px-4 sm:px-6 lg:px-6 pt-4 pb-2">
-          <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
-            {/* Map Toolbar */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider myriad-pro-semibold">Map</span>
-                {totalRoadsOnMap > 0 && (
-                  <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-1.5 py-0.5 rounded-full">
-                    {totalRoadsOnMap} roads
-                  </span>
-                )}
-              </div>
-              <select
-                value={mapLayer}
-                onChange={(e) => setMapLayer(e.target.value)}
-                className="px-2.5 py-1.5 rounded-md text-xs border border-gray-200 bg-white text-gray-600 cursor-pointer hover:border-gray-300 transition-colors focus:outline-none focus:border-blue-400"
-              >
-                {Object.entries(mapLayers).map(([key, layer]) => (
-                  <option key={key} value={key}>
-                    {layer.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Leaflet Map */}
-            <div className="h-[500px] sm:h-[600px] lg:h-[70vh] w-full">
-              {filteredGeoJsonData && isValidGeoJSON(filteredGeoJsonData) ? (
-                <MapContainer
-                  key={animatedMapKey}
-                  center={animatedMapCenter}
-                  zoom={animatedMapZoom}
-                  style={{ height: "100%", width: "100%" }}
-                  zoomAnimation={true}
-                  fadeAnimation={true}
-                  markerZoomAnimation={true}
-                  animate={true}
-                  duration={0.75}
-                  easeLinearity={0.25}
-                >
-                  <TileLayer
-                    url={mapLayers[mapLayer].url}
-                    attribution={mapLayers[mapLayer].attribution}
-                  />
-                  <GeoJSON data={filteredGeoJsonData} onEachFeature={onEachFeature} />
-                </MapContainer>
-              ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50/50 gap-2">
-                  <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin"></div>
-                  <p className="text-xs text-gray-400 myriad-pro-regular">Loading map…</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="px-4 sm:px-6 lg:px-6 pb-6 pt-1">
-          <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
-            {/* Stats Header */}
-            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider myriad-pro-semibold">
-                Statistics
-              </h3>
-              {isFilterApplied && (
-                <span className="text-[10px] bg-emerald-50 text-emerald-600 font-semibold px-2 py-0.5 rounded-full">
-                  Filter Applied
-                </span>
-              )}
-            </div>
-
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-100">
-              {STATS_TEMPLATE.map(({ label, value, unit, icon }) => (
-                <div
-                  key={label}
-                  className="bg-white px-5 py-5 flex flex-col items-center justify-center"
-                >
-                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide myriad-pro-semibold mb-1.5">
-                    {icon} {label}
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-gray-900 myriad-pro-bold tabular-nums">
-                      {isFilterApplied ? value : "—"}
-                    </span>
-                    {unit && isFilterApplied && (
-                      <span className="text-xs font-medium text-gray-400">
-                        {unit}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   );
 };

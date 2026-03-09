@@ -2,7 +2,7 @@ import axios from "axios";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
-import RoadAthena from "../assets/svgs/RoadAthena";
+import { RoadAthena, City, Muncipal, Road, Ward } from "../assets/svgs";
 import InputDropdown from "../component/InputDropdown/InputDropdown";
 
 const HaryanaTab = () => {
@@ -462,7 +462,7 @@ const HaryanaTab = () => {
           </div>
 
           {/* Stat Cards */}
-          <div className="px2">            
+          <div className="px2">
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {stats.map(({ label, value, unit, icon, borderColor }) => (
