@@ -2,6 +2,7 @@ from dashboard.views.vectorFetch import RoadVectorTileView
 from dashboard.views.uploadGeo import UploadGeo
 from django.urls import path
 from dashboard.views.fetchRoadData import FetchRoadData
+from dashboard.views.returnWard import GetUniqueWards
 
 
 urlpatterns = [
@@ -12,4 +13,5 @@ urlpatterns = [
         RoadVectorTileView.as_view(),
         name="road-tiles",
     ),
+    path("get-unique-wards", GetUniqueWards.as_view(), name="get-unique-wards"),
 ]
