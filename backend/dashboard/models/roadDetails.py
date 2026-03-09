@@ -13,7 +13,7 @@ class RoadDetails(models.Model):
 
     mla_cons = models.CharField(max_length=200, null=True, blank=True)
     pwd_cir = models.CharField(max_length=200, null=True, blank=True)
-    pwd_div = models.CharField(max_length=200, null=True, blank=True)
+    ward = models.CharField(max_length=200, null=True, blank=True)  # ward number
 
     source = models.CharField(max_length=100, null=True, blank=True)
 
@@ -27,5 +27,8 @@ class RoadDetails(models.Model):
     distCode = models.IntegerField(null=True, blank=True)
     deptCode = models.IntegerField(null=True, blank=True)
 
+    class Meta:
+        db_table = "road_details"
+
     def __str__(self):
-        return f"Details for {self.road.rd_name}"
+        return f"Details for {self.road.name}"
