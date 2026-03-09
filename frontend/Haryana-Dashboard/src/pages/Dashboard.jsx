@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import axios from "axios";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import InputDropdown from "../component/InputDropdown/InputDropdown";
+import { useEffect, useState } from "react";
+import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 import RoadAthena from "../assets/svgs/RoadAthena";
+import InputDropdown from "../component/InputDropdown/InputDropdown";
 
 const HaryanaTab = () => {
 
@@ -114,7 +113,7 @@ const HaryanaTab = () => {
     const fetchGeoJsonData = async () => {
       try {
         const response = await axios.get(
-          "http://192.168.1.208:8000/api/fetchRoadData",
+          "http://127.0.0.1:8000/api/fetchRoadData",
         );
 
         console.log("API Response Status:", response);
