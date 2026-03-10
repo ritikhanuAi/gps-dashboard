@@ -2,13 +2,11 @@ import axios from "axios";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
-import RoadAthena from "../assets/svgs/RoadAthena";
+import { RoadAthena, City, Muncipal, Road, Ward } from "../assets/svgs";
 import InputDropdown from "../component/InputDropdown/InputDropdown";
 
 const HaryanaTab = () => {
-
-    // state declare 
-
+  // state declare
 
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedMunicipalCouncil, setSelectedMunicipalCouncil] = useState("");
@@ -43,8 +41,6 @@ const HaryanaTab = () => {
       name: "Terrain",
     },
   };
-
-
 
   // Extract unique cities FUNCTION from GeoJSON data
   const extractUniqueCities = (geoData) => {
@@ -245,9 +241,8 @@ const HaryanaTab = () => {
     setSelectedWard("");
     setSelectedRoad("");
 
-
     // Keep city selected to maintain zoom functionality
-   
+
     if (!selectedCity) {
       setMapCenter([29.0588, 75.8507]);
       setMapZoom(10);
@@ -286,7 +281,6 @@ const HaryanaTab = () => {
     }
   }, [selectedCity]);
 
- 
   // Handle GeoJSON feature click
   const onEachFeature = (feature, layer) => {
     const props = feature.properties;
@@ -301,7 +295,7 @@ const HaryanaTab = () => {
     layer.setStyle(getFeatureStyle(feature));
   };
 
-  //  STATS DUMMY DATA 
+  //  STATS DUMMY DATA
   const stats = [
     {
       label: "Total Roads",
@@ -335,7 +329,7 @@ const HaryanaTab = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* ── Header ── */}
-      <div className="fixed top-0 left-0 right-0 w-full bg-white border-gray-300 shadow-lg px-4 sm:px-6 lg:px-6 py-3 flex items-center gap-2 z-50">
+      <div className="sticky top-0 w-full bg-white border-gray-300 shadow-lg px-4 sm:px-6 lg:px-6 py-3 flex items-center gap-2 z-50">
         <RoadAthena width={20} height={26} />
         <span className="text-sm font-semibold text-gray-800 myriad-pro-semibold">
           RoadAthena
@@ -343,7 +337,7 @@ const HaryanaTab = () => {
       </div>
 
       {/* ── Filter Roww ── */}
-      <div className="bg-white border-b border-gray-100 shadow-sm px-4 sm:px-6 lg:px-8 py-4 mt-8 pt-8">
+      <div className="bg-white border-b rounded-lg border-gray-100 shadow-sm px-4 sm:px-6 lg:px-8 py-4 m-4 mb-2 ">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <InputDropdown
             label="City"
@@ -352,6 +346,7 @@ const HaryanaTab = () => {
             optionList={cityOptions}
             placeholder={"Select City"}
             name="city"
+            icon={<City width={21} />}
             width="100%"
             isSearchable
           />
@@ -362,6 +357,7 @@ const HaryanaTab = () => {
             optionList={municipalCouncilOptions}
             placeholder={"Select Council"}
             name="municipalCouncil"
+            icon={<Muncipal width={21} />}
             width="100%"
             isSearchable
           />
@@ -372,6 +368,7 @@ const HaryanaTab = () => {
             optionList={wardOptions}
             placeholder={"Select Ward"}
             name="ward"
+            icon={<Ward width={21} />}
             width="100%"
             isSearchable
           />
@@ -381,6 +378,7 @@ const HaryanaTab = () => {
             onChange={handleDropdownChange(setSelectedRoad)}
             optionList={roadOptions}
             name="road"
+            icon={<Road width={21} />}
             width="100%"
             placeholder="Select Road"
             isSearchable
@@ -403,11 +401,11 @@ const HaryanaTab = () => {
       </div>
 
       {/* ── map part── */}
-      <div className="px-4 sm:px-6 lg:px-6 py-3">
+      <div className="px-4 sm:px-6 lg:px-6">
         {/* ── Map Panel ── */}
-        <div className="w-full bg-white rounded-lg shadow-md overflow-hidden mb-3">
+        <div className="w-fullrounded-lg overflow-hidden mb-3">
           {/* Map Toolbar */}
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200">
             <label className="text-sm font-semibold text-gray-700 myriad-pro-semibold">
               Layer:
             </label>
@@ -451,22 +449,20 @@ const HaryanaTab = () => {
       {/* ── road Detail — Below Map ── */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Context Info & Stats */}
-        <div className="bg-white  shadow-md px-5 py-4 w-full lg:w-full">
+        <div className="bg-white  shadow-md  rounded-lg border-gray-100 ml-4 mr-4 px-5 py-4 w-full lg:w-full">
           {/* Context Info */}
           <div className="mb-2 pb-4 border-b border-gray-200">
-            <p className="text-base font-bold text-gray-800 truncate myriad-pro-semibold">
-              {selectedCity || "City"} — {selectedMunicipalCouncil || "Council"}
+            <p className="text-xl font-bold text-gray-800 truncate myriad-pro-semibold">
+              Region Overview
             </p>
             <p className="text-base text-gray-400 mt-0.5 myriad-pro-regular">
+              {selectedCity || "City"} — {selectedMunicipalCouncil || "Council"}{" "}
               {selectedWard || "Ward"} · {selectedRoad || "Road"}
             </p>
           </div>
 
           {/* Stat Cards */}
           <div className="px2">
-            <h3 className="text-lg font-bold text-gray-800 myriad-pro-semibold">
-              Stats
-            </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {stats.map(({ label, value, unit, icon, borderColor }) => (
@@ -494,8 +490,6 @@ const HaryanaTab = () => {
             ))}
           </div>
         </div>
-
-       
       </div>
     </div>
   );

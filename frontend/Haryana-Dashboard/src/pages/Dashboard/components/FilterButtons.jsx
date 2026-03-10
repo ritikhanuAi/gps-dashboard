@@ -3,18 +3,18 @@
  */
 const FilterButtons = ({ onApplyFilter, onClearFilter }) => {
   return (
-    <div className="flex gap-2 items-end pb-0.5">
+    <div className="flex gap-2">
       <button
         onClick={onApplyFilter}
-        className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-semibold myriad-pro-semibold whitespace-nowrap transition-colors"
+        className="px-4 py-2 btn-accent-secondary rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
       >
-        Apply
+        Apply Filter
       </button>
       <button
         onClick={onClearFilter}
-        className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg text-xs font-semibold myriad-pro-semibold whitespace-nowrap transition-colors"
+        className="px-4 py-2 btn-danger-light rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
       >
-        Reset
+        Clear Filter
       </button>
     </div>
   );
