@@ -5,17 +5,17 @@ from dashboard.models.roads import Road
 class RoadDetails(models.Model):
     road = models.ForeignKey(Road, on_delete=models.CASCADE, related_name="details")
 
-    start_pt = models.CharField(max_length=200, blank=True, null=True)
-    end_pt = models.CharField(max_length=200, blank=True, null=True)
+    start_pt = models.CharField(max_length=500, blank=True, null=True)
+    end_pt = models.CharField(max_length=500, blank=True, null=True)
 
     width = models.FloatField(null=True, blank=True)
     carriage = models.FloatField(null=True, blank=True)
 
-    mla_cons = models.CharField(max_length=200, null=True, blank=True)
-    pwd_cir = models.CharField(max_length=200, null=True, blank=True)
-    ward = models.CharField(max_length=200, null=True, blank=True)  # ward number
+    mla_cons = models.CharField(max_length=500, null=True, blank=True)
+    pwd_cir = models.CharField(max_length=500, null=True, blank=True)
+    ward = models.CharField(max_length=500, null=True, blank=True)  # ward number
 
-    source = models.CharField(max_length=100, null=True, blank=True)
+    source = models.CharField(max_length=500, null=True, blank=True)
 
     gis_length = models.FloatField(null=True, blank=True)
     lengthdoc = models.FloatField(null=True, blank=True)
