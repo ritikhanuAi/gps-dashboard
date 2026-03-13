@@ -196,11 +196,11 @@ const Dashboard = () => {
   const totalRoadsOnMap = filteredGeoJsonData?.features?.length || 0;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen ">
       {/* ── Header ── */}
-      <div className="sticky top-0 w-full bg-white border-gray-300 shadow-lg px-4 sm:px-6 lg:px-6 py-3 flex items-center gap-2 z-50">
-        <RoadAthena width={20} height={26} />
-        <span className="text-sm font-semibold text-gray-800 myriad-pro-semibold">
+      <div className="sticky top-0 w-full bg-white border-gray-300 shadow-md px-4 sm:px-6 lg:px-6 py-5 flex items-center gap-2 z-50">
+        <RoadAthena width={22} height={28} />
+        <span className="text-lg font-semibold text-gray-800 myriad-pro-semibold">
           RoadAthena
         </span>
       </div>
@@ -281,7 +281,7 @@ const Dashboard = () => {
             <select
               value={mapLayer}
               onChange={(e) => setMapLayer(e.target.value)}
-              className="px-3 py-2 rounded-lg text-sm border border-gray-300 bg-white text-gray-700 cursor-pointer"
+              className="px-2 py-2 rounded-sm text-sm border border-gray-300 bg-white text-gray-700 cursor-pointer"
             >
               {Object.entries(mapLayers).map(([key, layer]) => (
                 <option key={key} value={key}>
@@ -333,7 +333,7 @@ const Dashboard = () => {
             <p className="text-xl font-bold text-gray-800 truncate myriad-pro-semibold">
               Region Overview
             </p>
-            <p className="text-base text-gray-400 mt-0.5 myriad-pro-regular">
+            <p className="text-base text-gray-700 mt-0.5 myriad-pro-regular">
               {selectedCities.length > 0
                 ? selectedCities.map((c) => c.label).join(", ")
                 : "City"}{" "}
