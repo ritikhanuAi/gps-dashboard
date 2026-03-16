@@ -266,15 +266,22 @@ export const extractUniqueRoads = (geoData) => {
   geoData.features.forEach((feature) => {
     const roadName = feature.properties?.name;
     const roadId = feature.properties?.id;
-    // Skip "No Name" roads
-    if (roadName && roadId && roadName.trim().toLowerCase() !== "no name") {
-      // Use roadId as key to ensure uniqueness
-      if (!uniqueRoads.has(roadId)) {
-        uniqueRoads.set(roadId, {
-          label: roadName,
-          value: String(roadId),
-        });
-      }
+
+    if (!roadId) return; // Skip features without an ID
+
+    // Use roadId as key to ensure uniqueness
+    if (!uniqueRoads.has(roadId)) {
+      // Determine the display label
+      const isUnnamed =
+        !roadName ||
+        roadName.trim() === "" ||
+        roadName.trim().toLowerCase() === "no name";
+
+      uniqueRoads.set(roadId, {
+        label: isUnnamed ? `No Name (ID: ${roadId})` : roadName,
+        value: String(roadId),
+        isUnnamed, // flag for styling in the dropdown
+      });
     }
   });
 

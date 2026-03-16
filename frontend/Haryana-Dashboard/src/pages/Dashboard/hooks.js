@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useMap } from "react-leaflet";
 import { fetchRoadData, fetchRoadDataByCity, fetchRoadsByWard, fetchUniqueWards } from "../../api/RoadApi";
 import { HARYANA_CENTER, HARYANA_DEFAULT_ZOOM } from "./constants";
 import {
@@ -21,6 +22,9 @@ export const useRoadData = () => {
   const [mapCenter, setMapCenter] = useState(HARYANA_CENTER);
   const [mapZoom, setMapZoom] = useState(HARYANA_DEFAULT_ZOOM);
   const [mapKey, setMapKey] = useState(0);
+
+  // Target bounds for smooth fly-to (instead of re-mounting)
+  const [flyTarget, setFlyTarget] = useState(null);
 
   // Load road data on mount
   useEffect(() => {
@@ -71,32 +75,22 @@ export const useRoadData = () => {
     setMapZoom,
     mapKey,
     setMapKey,
+    flyTarget,
+    setFlyTarget,
   };
 };
 
-/**
- * Helper: filter out "No Name" roads from GeoJSON
- */
-const filterOutNoNameRoads = (geoJsonData) => {
-  if (!geoJsonData || !Array.isArray(geoJsonData.features)) return geoJsonData;
-  return {
-    ...geoJsonData,
-    features: geoJsonData.features.filter((feature) => {
-      const name = feature.properties?.name;
-      return name && name.trim().toLowerCase() !== "no name";
-    }),
-  };
-};
 
 /**
  * Custom hook to manage filter cascade logic
  * City -> Municipal Council -> Ward -> Road(s)
  */
-export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCenter, setMapZoom, setMapKey) => {
+export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCenter, setMapZoom, setMapKey, setFlyTarget) => {
   const [selectedCities, setSelectedCities] = useState([]);
   const [selectedMunicipalCouncil, setSelectedMunicipalCouncil] = useState("");
   const [selectedMunicipalCouncilOption, setSelectedMunicipalCouncilOption] = useState(null);
-  const [selectedWard, setSelectedWard] = useState(""); // Single select
+  const [selectedWard, setSelectedWard] = useState(""); // Single select - stores ward VALUE (number string)
+  const [selectedWardLabel, setSelectedWardLabel] = useState(""); // Display label for ward
   const [selectedRoads, setSelectedRoads] = useState([]); // Array for multi-select
   const [wardGeoJsonData, setWardGeoJsonData] = useState(null); // GeoJSON for selected ward (without No Name roads)
 
@@ -136,6 +130,7 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
       setSelectedMunicipalCouncil("");
       setSelectedMunicipalCouncilOption(null);
       setSelectedWard("");
+      setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
     } else {
@@ -145,6 +140,7 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
       setSelectedMunicipalCouncil("");
       setSelectedMunicipalCouncilOption(null);
       setSelectedWard("");
+      setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
     }
@@ -182,11 +178,13 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
 
       fetchWards();
       setSelectedWard("");
+      setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
     } else {
       setWardOptions([]);
       setSelectedWard("");
+      setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
     }
@@ -204,8 +202,18 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
           console.log("Roads API Response:", response);
 
           if (response && response.data) {
-            // Filter out "No Name" roads
-            const cleanedGeoJson = filterOutNoNameRoads(response.data);
+            // Include all roads (do not filter out No Name roads)
+            let cleanedGeoJson = response.data;
+
+            // Filter locally by ward to ensure map only shows roads for the selected ward
+            if (cleanedGeoJson && Array.isArray(cleanedGeoJson.features)) {
+              cleanedGeoJson = {
+                ...cleanedGeoJson,
+                features: cleanedGeoJson.features.filter(
+                  (f) => String(f.properties?.ward) === String(selectedWard)
+                )
+              };
+            }
 
             // Store for later road filtering
             setWardGeoJsonData(cleanedGeoJson);
@@ -214,16 +222,14 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
             if (isValidGeoJSON(cleanedGeoJson) && cleanedGeoJson.features.length > 0) {
               setFilteredGeoJsonData(cleanedGeoJson);
 
-              // Zoom to fit roads
+              // Fly to fit roads (smooth transition)
               const bounds = getBoundsForGeoJson(cleanedGeoJson);
               if (bounds) {
-                setMapCenter(bounds.center);
-                setMapZoom(bounds.zoom);
-                setMapKey((prev) => prev + 1);
+                setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
               }
             }
 
-            // Extract road names for dropdown (already without "No Name")
+            // Extract road names for dropdown
             const roads = extractUniqueRoads(cleanedGeoJson);
             setRoadOptions(roads);
           } else {
@@ -261,23 +267,19 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
       };
       setFilteredGeoJsonData(filteredData);
 
-      // Zoom to selected roads
+      // Fly to selected roads (smooth transition)
       const bounds = getBoundsForGeoJson(filteredData);
       if (bounds) {
-        setMapCenter(bounds.center);
-        setMapZoom(bounds.zoom);
-        setMapKey((prev) => prev + 1);
+        setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
       }
     } else if (wardGeoJsonData && selectedRoads.length === 0) {
       // Show all named roads in the ward when no specific roads selected
       setFilteredGeoJsonData(wardGeoJsonData);
 
-      // Zoom to all ward roads
+      // Fly to all ward roads
       const bounds = getBoundsForGeoJson(wardGeoJsonData);
       if (bounds) {
-        setMapCenter(bounds.center);
-        setMapZoom(bounds.zoom);
-        setMapKey((prev) => prev + 1);
+        setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
       }
     }
   }, [selectedRoads]);
@@ -291,6 +293,8 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
     setSelectedMunicipalCouncilOption,
     selectedWard,
     setSelectedWard,
+    selectedWardLabel,
+    setSelectedWardLabel,
     selectedRoads,
     setSelectedRoads,
     isLoadingMunicipalCouncil,
@@ -303,59 +307,69 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
 };
 
 /**
- * Custom hook to manage map zoom animation
- * Handles both city selection animation and external zoom updates (ward/road selection)
+ * Component that smoothly flies the map to a target location.
+ * Must be rendered as a child of <MapContainer>.
  */
-export const useMapAnimation = (selectedCities, geoJsonData, mapCenter, mapZoom, mapKey) => {
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [animatedMapCenter, setAnimatedMapCenter] = useState(mapCenter);
-  const [animatedMapZoom, setAnimatedMapZoom] = useState(mapZoom);
-  const [animatedMapKey, setAnimatedMapKey] = useState(mapKey);
+export const MapFlyTo = ({ flyTarget }) => {
+  const map = useMap();
+  const prevTargetRef = useRef(null);
 
-  // Sync animated values when parent mapCenter/mapZoom/mapKey change
   useEffect(() => {
-    if (!isAnimating) {
-      setAnimatedMapCenter(mapCenter);
-      setAnimatedMapZoom(mapZoom);
-      setAnimatedMapKey(mapKey);
-    }
-  }, [mapCenter, mapZoom, mapKey]);
+    if (!flyTarget || !map) return;
 
-  // City selection animation (zoom out then zoom in)
+    // Avoid re-flying to the same target
+    const targetKey = JSON.stringify(flyTarget);
+    if (prevTargetRef.current === targetKey) return;
+    prevTargetRef.current = targetKey;
+
+    if (flyTarget.bounds) {
+      // Use fitBounds for the smoothest/most accurate fit
+      const leafletBounds = [
+        [flyTarget.bounds[0][0], flyTarget.bounds[0][1]],
+        [flyTarget.bounds[1][0], flyTarget.bounds[1][1]],
+      ];
+      map.flyToBounds(leafletBounds, {
+        padding: [30, 30],
+        duration: 1.2,
+        easeLinearity: 0.25,
+        maxZoom: flyTarget.zoom || 18,
+      });
+    } else if (flyTarget.center) {
+      map.flyTo(flyTarget.center, flyTarget.zoom || 14, {
+        duration: 1.2,
+        easeLinearity: 0.25,
+      });
+    }
+  }, [flyTarget, map]);
+
+  return null;
+};
+
+/**
+ * Custom hook to manage map zoom animation for city selection
+ * Uses flyTo instead of re-mounting the map
+ */
+export const useMapAnimation = (selectedCities, geoJsonData, mapCenter, mapZoom, mapKey, setFlyTarget) => {
+  // City selection animation (fly to city bounds)
   useEffect(() => {
     if (selectedCities && selectedCities.length > 0) {
       const bounds = getBoundsForCities(geoJsonData, selectedCities);
       if (bounds) {
-        setIsAnimating(true);
-
-        setTimeout(() => {
-          setAnimatedMapCenter([29.0588, 75.8507]);
-          setAnimatedMapZoom(7);
-        }, 100);
-
-        setTimeout(() => {
-          setAnimatedMapCenter(bounds.center);
-          setAnimatedMapZoom(13);
-          setAnimatedMapKey((prev) => prev + 1);
-          setIsAnimating(false);
-        }, 950);
+        setFlyTarget({ center: bounds.center, zoom: bounds.zoom + 1 });
       }
     } else if (geoJsonData) {
       const bounds = getBoundsForCities(geoJsonData, []);
       if (bounds) {
-        setTimeout(() => {
-          setAnimatedMapCenter(bounds.center);
-          setAnimatedMapZoom(bounds.zoom);
-          setAnimatedMapKey((prev) => prev + 1);
-        }, 100);
+        setFlyTarget({ center: bounds.center, zoom: bounds.zoom });
       }
     }
   }, [selectedCities, geoJsonData]);
 
   return {
-    isAnimating,
-    animatedMapCenter,
-    animatedMapZoom,
-    animatedMapKey,
+    // No longer returning animated values — we use the original ones
+    // and let MapFlyTo handle smooth transitions
+    animatedMapCenter: mapCenter,
+    animatedMapZoom: mapZoom,
+    animatedMapKey: mapKey,
   };
 };

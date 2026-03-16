@@ -11,6 +11,7 @@ const InputDropdown = ({
   value,
   name,
   onChange,
+  onClear = null,
   width,
   label = "",
   disabled,
@@ -48,6 +49,17 @@ const InputDropdown = ({
 
     if (onChange) {
       onChange(event);
+    }
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    setSelectedOption("");
+    setSearchValue("");
+    setFilteredOptions(optionList);
+    setIsOpen(false);
+    if (onClear) {
+      onClear();
     }
   };
 
@@ -101,9 +113,8 @@ const InputDropdown = ({
 
       <div className="main-dropdown-container">
         <div
-          className={`dropdown-header ${isOpen ? "active" : ""} ${
-            disabled ? "disabled" : ""
-          }`}
+          className={`dropdown-header ${isOpen ? "active" : ""} ${disabled ? "disabled" : ""
+            }`}
           onClick={() => {
             if (!disabled) setIsOpen(!isOpen);
           }}
@@ -117,12 +128,22 @@ const InputDropdown = ({
           {icon && <span className="dropdown-icon">{icon}</span>}
 
           <p
-            className={`myriad-pro-regular ${
-              selectedOption ? "" : "placeholder-text"
-            }`}
+            className={`myriad-pro-regular ${selectedOption ? "" : "placeholder-text"
+              }`}
+            style={{ flex: 1 }}
           >
             {selectedOption || placeholder}
           </p>
+
+          {onClear && selectedOption && !disabled && (
+            <span
+              className="dropdown-clear-btn"
+              onClick={handleClear}
+              title="Clear selection"
+            >
+              ✕
+            </span>
+          )}
 
           {!disabled && (
             <span className="dropdown-arrow">
@@ -190,9 +211,8 @@ const InputDropdown = ({
                   return (
                     <div
                       key={index}
-                      className={`dropdown-option ${
-                        option?.label === selectedOption ? "selected" : ""
-                      }`}
+                      className={`dropdown-option ${option?.label === selectedOption ? "selected" : ""
+                        }`}
                       onClick={() => handleOptionClick(option)}
                     >
                       <p className="myriad-pro-regular">{highlightedLabel}</p>
@@ -216,6 +236,7 @@ InputDropdown.propTypes = {
   value: PropTypes.any.isRequired,
   name: PropTypes.string,
   onChange: PropTypes.func.isRequired,
+  onClear: PropTypes.func,
   width: PropTypes.string,
   label: PropTypes.string,
   disabled: PropTypes.bool,

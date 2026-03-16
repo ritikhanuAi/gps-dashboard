@@ -66,6 +66,26 @@
         flex-shrink: 0;
       }
 
+      .dropdown-clear-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        font-size: 0.65rem;
+        color: #94a3b8;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        line-height: 1;
+
+        &:hover {
+          background-color: #fee2e2;
+          color: #ef4444;
+        }
+      }
+
       p {
         flex-grow: 1;
         /* Makes the text take up the available space */

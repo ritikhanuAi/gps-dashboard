@@ -56,3 +56,14 @@ export const fetchUniqueWards = async (roadId) => {
     throw error;
   }
 };
+
+// Function to fetch specific road details by ID (for map click dialog)
+export const fetchRoadDetailsById = async (roadId) => {
+  try {
+    const response = await axiosInstance.get(`/get-road-details/${roadId}/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching road details:', error);
+    throw error;
+  }
+};

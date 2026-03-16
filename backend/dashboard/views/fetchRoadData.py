@@ -86,7 +86,9 @@ class FetchRoadData(APIView):
     def fetchRoadByWard(self, wardNo, roadId):
 
         # Step 1: Get city and municipal_council from the road id
-        road = Road.objects.filter(id=roadId).values("city", "municipal_council").first()
+        road = (
+            Road.objects.filter(id=roadId).values("city", "municipal_council").first()
+        )
 
         if not road:
             return {"type": "FeatureCollection", "features": []}
@@ -118,7 +120,9 @@ class FetchRoadData(APIView):
                 road_name=F("road__name"),
                 geojson=AsGeoJSON("geom"),
             )
-            .values("road_id", "city", "municipal_council", "road_name", "geojson")
+            .values(
+                "id", "road_id", "city", "municipal_council", "road_name", "geojson"
+            )
         )
 
         features = []
@@ -129,7 +133,8 @@ class FetchRoadData(APIView):
             feature = {
                 "type": "Feature",
                 "properties": {
-                    "id": row["road_id"],
+                    "roadId": row["road_id"],
+                    "id": row["id"],
                     "city": row["city"],
                     "municipal_council": row["municipal_council"],
                     "name": row["road_name"],
@@ -144,7 +149,6 @@ class FetchRoadData(APIView):
             "type": "FeatureCollection",
             "features": features,
         }
-
 
     def get(self, request):
         cityId = request.query_params.get("cityId")
