@@ -269,10 +269,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Map Part ── */}
-      <div className="px-4 sm:px-6 lg:px-6">
+      {/* ── Map Part & Region Overview ── */}
+      <div className="relative px-4 sm:px-6 lg:px-6 mb-4">
         {/* ── Map Panel ── */}
-        <div className="w-full rounded-lg overflow-hidden mb-3">
+        <div className="w-full rounded-lg overflow-hidden">
           {/* Map Toolbar */}
           <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200">
             <label className="text-sm font-semibold text-gray-700 myriad-pro-semibold">
@@ -322,12 +322,9 @@ const Dashboard = () => {
             )}
           </div>
         </div>
-      </div>
 
-      {/* ── Road Detail — Below Map ── */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Context Info & Stats */}
-        <div className="bg-white shadow-md rounded-lg border-gray-100 ml-4 mr-4 px-5 py-4 w-full lg:w-full">
+        {/* ── Region Overview (Overlaid on Map) ── */}
+        <div className="absolute bottom-4 right-4 lg:bottom-8 lg:right-8 bg-white/80 backdrop-blur-md rounded-lg border border-gray-200 shadow-lg px-5 py-4 w-80 max-w-[calc(100%-2rem)]">
           {/* Context Info */}
           <div className="mb-2 pb-4 border-b border-gray-200">
             <p className="text-xl font-bold text-gray-800 truncate myriad-pro-semibold">
@@ -348,7 +345,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-1 gap-5">
             {STATS_TEMPLATE.map(({ label, value, unit, icon, borderColor }) => (
               <div
                 key={label}
