@@ -6,6 +6,7 @@ import axiosInstance from './axiosInstance';
 export const fetchRoadData = async () => {
   try {
     const response = await axiosInstance.get('/fetchRoadData');
+    console.log('Fetched road data:', response); // Log the fetched data for debugging
     return response.data;
   } catch (error) {
     console.error('Error fetching road data:', error);

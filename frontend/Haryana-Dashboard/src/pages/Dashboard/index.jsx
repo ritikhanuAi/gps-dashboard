@@ -198,16 +198,23 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen ">
       {/* ── Header ── */}
-      <div className="sticky top-0 w-full bg-white border-gray-300 shadow-md px-4 sm:px-6 lg:px-6 py-5 flex items-center gap-2 z-50">
-        <RoadAthena width={22} height={28} />
-        <span className="text-lg font-semibold text-gray-800 myriad-pro-semibold">
-          RoadAthena
-        </span>
+      <div className="sticky top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-lg px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between z-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg">
+            <RoadAthena width={24} height={28} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 myriad-pro-semibold">
+              RoadAthena
+            </h1>
+            <p className="text-xs text-gray-500">Road Management Dashboard</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Filter Row ── */}
-      <div className="bg-white border-b rounded-lg border-gray-100 shadow-sm px-4 sm:px-6 lg:px-8 py-4 m-4 mb-2 ">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <div className="relative z-40 bg-white/10 backdrop-blur-lg rounded-lg border border-gray-200 shadow-lg mx-4 sm:mx-6 lg:mx-5 my-4 px-4 sm:px-6 lg:px-8 py-5 overflow-visible">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end relative z-40 overflow-visible">
           <InputDropdown
             label="City"
             value={selectedCities.length > 0 ? selectedCities[0].label : ""}
@@ -252,36 +259,38 @@ const Dashboard = () => {
             placeholder="Select Road"
             isSearchable
           />
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={handleApplyFilter}
-              className="px-4 py-2 btn-accent-secondary rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
+              className="flex-1 px-4 py-2.5 text-white font-semibold rounded-sm shadow-md hover:shadow-lg transition duration-300 transform hover:scale-105 myriad-pro-semibold text-sm whitespace-nowrap"
+              style={{ backgroundColor: "#374774" }}
             >
               Apply Filter
             </button>
             <button
               onClick={handleResetFilter}
-              className="px-4 py-2 btn-danger-light rounded-sm text-sm font-semibold myriad-pro-semibold whitespace-nowrap"
+              className="flex-1 px-4 py-2.5 text-white font-semibold rounded-sm shadow-md hover:shadow-lg transition duration-300 transform hover:scale-105 myriad-pro-semibold text-sm whitespace-nowrap"
+              style={{ backgroundColor: "#dc3545" }}
             >
-              Clear Filter
+              Clear
             </button>
           </div>
         </div>
       </div>
 
       {/* ── Map Part & Region Overview ── */}
-      <div className="relative px-4 sm:px-6 lg:px-6 mb-4">
+      <div className="relative px-4 sm:px-6 lg:px-4 mb-4">
         {/* ── Map Panel ── */}
-        <div className="w-full rounded-lg overflow-hidden">
+        <div className="w-full rounded-lg overflow-hidden shadow-xl border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
           {/* Map Toolbar */}
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-200 bg-white/50 backdrop-blur-sm">
             <label className="text-sm font-semibold text-gray-700 myriad-pro-semibold">
               Layer:
             </label>
             <select
               value={mapLayer}
               onChange={(e) => setMapLayer(e.target.value)}
-              className="px-2 py-2 rounded-sm text-sm border border-gray-300 bg-white text-gray-700 cursor-pointer"
+              className="px-3 py-2 rounded-lg text-sm border border-gray-300 bg-white text-gray-700 cursor-pointer shadow-sm hover:border-blue-400 transition focus:ring-2 focus:ring-blue-400"
             >
               {Object.entries(mapLayers).map(([key, layer]) => (
                 <option key={key} value={key}>
@@ -292,7 +301,7 @@ const Dashboard = () => {
           </div>
 
           {/* Leaflet Map */}
-          <div className="h-[420px] sm:h-[500px] lg:h-[500px] w-full">
+          <div className="h-[420px] sm:h-[500px] lg:h-[600px] w-full">
             {filteredGeoJsonData && isValidGeoJSON(filteredGeoJsonData) ? (
               <MapContainer
                 key={animatedMapKey}
@@ -316,54 +325,51 @@ const Dashboard = () => {
                 />
               </MapContainer>
             ) : (
-              <div className="h-full w-full flex items-center justify-center bg-gray-50">
-                <p className="text-gray-500">Loading map...</p>
+              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-pulse"></div>
+                  <p className="text-gray-500 font-medium">Loading Map...</p>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* ── Region Overview (Overlaid on Map) ── */}
-        <div className="absolute bottom-4 right-4 lg:bottom-8 lg:right-8 bg-white/80 backdrop-blur-md rounded-lg border border-gray-200 shadow-lg px-5 py-4 w-80 max-w-[calc(100%-2rem)]">
+        {/* ── Region Overview (Overlaid on Map on Large Screens, Below on Small Screens) ── */}
+        <div className="lg:absolute lg:bottom-6 lg:right-6 rounded-lg border border-gray-200 shadow-xl px-4 py-5 w-full lg:w-72 lg:max-w-[calc(100%-2rem)] mt-4 lg:mt-0 lg:z-50 lg:backdrop-blur-sm">
           {/* Context Info */}
-          <div className="mb-2 pb-4 border-b border-gray-200">
-            <p className="text-xl font-bold text-gray-800 truncate myriad-pro-semibold">
+          <div className="mb-4 pb-4 border-b border-gray-200">
+            <p className="text-lg font-bold text-gray-900 truncate myriad-pro-semibold">
               Region Overview
             </p>
-            <p className="text-base text-gray-700 mt-0.5 myriad-pro-regular">
+            <p className="text-sm text-gray-600 mt-1 myriad-pro-regular line-clamp-2">
               {selectedCities.length > 0
                 ? selectedCities.map((c) => c.label).join(", ")
-                : "City"}{" "}
-              — {selectedMunicipalCouncil || "Council"}{" "}
-              {selectedWard ? `Ward ${selectedWard}` : "Ward"} ·{" "}
-              {selectedRoads.length > 0
-                ? selectedRoads.length === 1
-                  ? selectedRoads[0].label
-                  : `${selectedRoads.length} roads`
-                : "Road"}
+                : "Select City"}{" "}
+              {selectedMunicipalCouncil && `• ${selectedMunicipalCouncil}`}
             </p>
           </div>
 
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-1 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-1 gap-3">
             {STATS_TEMPLATE.map(({ label, value, unit, icon, borderColor }) => (
               <div
                 key={label}
-                className={`bg-gray-50 rounded-lg px-4 py-4 shadow-sm border-l-4 ${borderColor || "border-l-blue-500"}`}
+                className={`rounded-xl p-3 border transition duration-300 hover:shadow-lg hover:scale-105 cursor-pointer bg-white/50 backdrop-blur-sm border-gray-200 ${borderColor || "border-l-blue-500"}`}
               >
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-lg">{icon}</span>
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide myriad-pro-semibold">
-                    {label}
-                  </span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xl">{icon}</span>
                 </div>
-                <div className="flex items-baseline justify-center gap-1.5">
-                  <span className="text-2xl font-bold text-gray-900 myriad-pro-regular">
-                    {isFilterApplied ? value : "NA"}
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide myriad-pro-semibold truncate">
+                  {label}
+                </p>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-xl font-bold text-gray-900 myriad-pro-regular">
+                    {isFilterApplied ? value : "—"}
                   </span>
-                  {unit && (
-                    <span className="text-xs font-medium text-gray-600">
-                      {isFilterApplied ? unit : ""}
+                  {unit && isFilterApplied && (
+                    <span className="text-xs font-medium text-gray-500">
+                      {unit}
                     </span>
                   )}
                 </div>

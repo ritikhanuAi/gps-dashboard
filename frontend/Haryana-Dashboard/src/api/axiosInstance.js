@@ -2,10 +2,10 @@ import axios from 'axios';
 
 // Create an axios instance with default configuration
 const axiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api', // Updated to match the original API endpoint
+  baseURL: "http://192.168.1.208:8000/api", // Updated to match the original API endpoint
   timeout: 10000, // Timeout in milliseconds
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     // Add any default headers here
   },
 });
