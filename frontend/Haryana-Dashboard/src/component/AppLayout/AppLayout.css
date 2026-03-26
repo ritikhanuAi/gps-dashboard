@@ -1,0 +1,15 @@
+/* ─── App Layout ────────────────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.app-layout__main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden; /* let child pages manage their own layout */
+  display: flex;
+  flex-direction: column;
+}

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -71,16 +72,24 @@
 html,
 body {
   height: 100%;
+  width: 100%;
   min-width: 320px;
-  min-height: 100dvh;
-  margin: auto;
+  margin: 0;
+  padding: 0;
   background: var(--bg-light);
   color: var(--text-primary);
-  font-family: "Poppins", sans-serif;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   scrollbar-width: none;
+  overflow: hidden; /* no page scroll */
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  overflow-y: auto;
-  scroll-behavior: smooth;
 }
 
 p,

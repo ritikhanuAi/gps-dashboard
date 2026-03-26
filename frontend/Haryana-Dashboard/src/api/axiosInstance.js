@@ -1,8 +1,9 @@
 import axios from 'axios';
+// import.meta.env.REACT_APP_API_URL;
 
 // Create an axios instance with default configuration
 const axiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api', // Updated to match the original API endpoint
+  baseURL: import.meta.env.VITE_API_URL, // Updated to match the original API endpoint
   timeout: 10000, // Timeout in milliseconds
   headers: {
     'Content-Type': 'application/json',

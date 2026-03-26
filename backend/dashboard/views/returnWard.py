@@ -4,6 +4,7 @@ from dashboard.models.roadDetails import RoadDetails
 from dashboard.models.roads import Road
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
+from django.db.models import IntegerField, Case, When, Value
 
 
 class GetUniqueWards(APIView):
@@ -32,8 +33,14 @@ class GetUniqueWards(APIView):
         # Get distinct wards from road details for those road ids
         wards = (
             RoadDetails.objects.filter(road__id__in=road_ids)
-            .annotate(ward_int=Cast("ward", IntegerField()))
-            .order_by("ward_int")
+            .annotate(
+                ward_int=Case(
+                    When(ward__regex=r"^\d+$", then=Cast("ward", IntegerField())),
+                    default=Value(None),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("ward_int", "ward")  # numeric first, then others
             .values_list("ward", flat=True)
             .distinct()
         )

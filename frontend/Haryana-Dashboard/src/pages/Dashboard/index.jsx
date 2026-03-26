@@ -1,5 +1,5 @@
 import "leaflet/dist/leaflet.css";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 import { RoadAthena, City, Muncipal, Road, Ward } from "../../assets/svgs";
 import InputDropdown from "../../component/InputDropdown/InputDropdown";
@@ -14,7 +14,7 @@ import {
 } from "./utils";
 
 const Dashboard = () => {
-  // Road data management
+  // ── Road data & map state ────────────────────────────────────────────
   const {
     geoJsonData,
     filteredGeoJsonData,
@@ -31,7 +31,7 @@ const Dashboard = () => {
     setFlyTarget,
   } = useRoadData();
 
-  // Filter cascade logic
+  // ── Filter cascade: City → MC → Ward → Roads ─────────────────────────
   const {
     selectedCities,
     setSelectedCities,
@@ -59,30 +59,26 @@ const Dashboard = () => {
     setFlyTarget,
   );
 
-  // Map animation
+  // ── Map animation ─────────────────────────────────────────────────────
   const { animatedMapCenter, animatedMapZoom, animatedMapKey } =
     useMapAnimation(selectedCities, geoJsonData, mapCenter, mapZoom, mapKey, setFlyTarget);
 
-  // Map layer selection
+  // ── Map layer ─────────────────────────────────────────────────────────
   const mapLayers = MAP_LAYERS;
   const [mapLayer, setMapLayer] = useState("default");
 
-  // Filter state
+  // ── View mode: general | category ────────────────────────────────────
+  const [viewMode, setViewMode] = useState("general");
+  const [showHasWidth, setShowHasWidth] = useState(true);
+  const [showNoWidth, setShowNoWidth]   = useState(true);
+
+  // ── Filter state ──────────────────────────────────────────────────────
   const [isFilterApplied, setIsFilterApplied] = useState(false);
 
-  // GeoJSON key to force re-render when data changes
-  const geoJsonKeyRef = useRef(0);
+  // ── Road detail dialog ────────────────────────────────────────────────
+  const [selectedRoadId, setSelectedRoadId] = useState(null);
 
-  // Handle city selection
-  const handleCityChange = (city) => {
-    setSelectedCities([city]);
-    if (geoJsonData) {
-      const filteredData = filterGeoJsonByCities(geoJsonData, [city]);
-      setFilteredGeoJsonData(filteredData);
-    }
-  };
-
-  // Clear city selection (and all downstream filters)
+  // ── Handlers ──────────────────────────────────────────────────────────
   const handleClearSelection = () => {
     setSelectedCities([]);
     setSelectedMunicipalCouncil("");
@@ -95,77 +91,38 @@ const Dashboard = () => {
     setFlyTarget({ center: [29.0588, 75.8507], zoom: 9 });
   };
 
-  // Handle municipal council change
-  const handleMunicipalCouncilChange = (value, optionItem) => {
-    setSelectedMunicipalCouncil(value);
-    setSelectedMunicipalCouncilOption(optionItem || null);
-    setSelectedWard("");
-    setSelectedWardLabel("");
-    setSelectedRoads([]);
-  };
-
-  // Handle ward change (single select) — uses value (number), not label
-  const handleWardChange = (value, label) => {
-    setSelectedWard(value);
-    setSelectedWardLabel(label || `Ward ${value}`);
-    setSelectedRoads([]);
-  };
-
-  // Handle road toggle (checkbox multi-select)
-  const handleRoadToggle = (road) => {
-    setSelectedRoads((prev) => {
-      const isAlreadySelected = prev.some((r) => r.value === road.value);
-      if (isAlreadySelected) {
-        return prev.filter((r) => r.value !== road.value);
-      } else {
-        return [...prev, road];
-      }
-    });
-  };
-
-  const handleClearRoads = () => setSelectedRoads([]);
-  const handleSelectAllRoads = () => setSelectedRoads([...roadOptions]);
-  const handleApplyFilter = () => setIsFilterApplied(true);
-
-  // Dropdown change handlers
   const handleCityDropdownChange = (event) => {
     const city = event.selectedItem;
     setSelectedCities([city]);
     if (geoJsonData) {
-      const filteredData = filterGeoJsonByCities(geoJsonData, [city]);
-      setFilteredGeoJsonData(filteredData);
+      setFilteredGeoJsonData(filterGeoJsonByCities(geoJsonData, [city]));
     }
   };
 
   const handleMCDropdownChange = (event) => {
-    const value = event.selectedItem.label;
-    setSelectedMunicipalCouncil(value);
+    setSelectedMunicipalCouncil(event.selectedItem.label);
     setSelectedMunicipalCouncilOption(event.selectedItem);
     setSelectedWard("");
     setSelectedWardLabel("");
     setSelectedRoads([]);
   };
 
-  // Ward dropdown change — use VALUE (e.g. "5"), not LABEL (e.g. "Ward 5")
   const handleWardDropdownChange = (event) => {
-    const wardValue = event.selectedItem.value;   // e.g. "5"
-    const wardLabel = event.selectedItem.label;    // e.g. "Ward 5"
-    setSelectedWard(wardValue);
-    setSelectedWardLabel(wardLabel);
+    setSelectedWard(event.selectedItem.value);
+    setSelectedWardLabel(event.selectedItem.label);
     setSelectedRoads([]);
   };
 
-  const handleRoadDropdownChange = (event) => {
-    const road = event.selectedItem;
+  const handleRoadToggle = (road) => {
     setSelectedRoads((prev) => {
-      const isAlreadySelected = prev.some((r) => r.value === road.value);
-      if (isAlreadySelected) {
-        return prev.filter((r) => r.value !== road.value);
-      } else {
-        return [...prev, road];
-      }
+      const exists = prev.some((r) => r.value === road.value);
+      return exists ? prev.filter((r) => r.value !== road.value) : [...prev, road];
     });
   };
+
+  const handleClearRoads    = () => setSelectedRoads([]);
+  const handleSelectAllRoads = () => setSelectedRoads([...roadOptions]);
+  const handleApplyFilter   = () => setIsFilterApplied(true);
 
   const handleResetFilter = () => {
     setSelectedMunicipalCouncil("");
@@ -179,65 +136,75 @@ const Dashboard = () => {
     setIsFilterApplied(false);
   };
 
-  const [selectedRoadId, setSelectedRoadId] = useState(null);
+  // ── Category-filtered GeoJSON (for category view checkboxes) ──────────
+  const displayGeoJson = useMemo(() => {
+    if (!filteredGeoJsonData || !isValidGeoJSON(filteredGeoJsonData)) return filteredGeoJsonData;
+    if (viewMode !== "category") return filteredGeoJsonData;
+    if (showHasWidth && showNoWidth) return filteredGeoJsonData;
+    return {
+      ...filteredGeoJsonData,
+      features: filteredGeoJsonData.features.filter((f) => {
+        const w = f.properties?.width;
+        const hasWidth = w !== null && w !== undefined && parseFloat(w) > 0;
+        return hasWidth ? showHasWidth : showNoWidth;
+      }),
+    };
+  }, [filteredGeoJsonData, viewMode, showHasWidth, showNoWidth]);
 
-  // Handle map click events
+  // GeoJSON key — forces re-render when data OR view mode changes
+  const geoJsonKey = displayGeoJson
+    ? `${JSON.stringify(displayGeoJson).length}_${viewMode}`
+    : `empty_${viewMode}`;
+
+  // ── Map feature styling ───────────────────────────────────────────────
   const onEachFeature = (feature, layer) => {
-    layer.setStyle(getFeatureStyle(feature));
-    
-    // Add click event listener to open custom dialog
+    layer.setStyle(getFeatureStyle(feature, viewMode));
     layer.on({
       click: (e) => {
         const props = e.target.feature.properties;
-        if (props && props.id) {
-          setSelectedRoadId(props.id);
-        }
-      }
+        if (props && props.id) setSelectedRoadId(props.id);
+      },
     });
   };
 
-  // Build context breadcrumb
-  const breadcrumb = [
-    selectedCities.length > 0
-      ? selectedCities.map((c) => c.label).join(", ")
-      : null,
-    selectedMunicipalCouncil || null,
-    selectedWardLabel || null,
-    selectedRoads.length > 0
-      ? selectedRoads.length === 1
-        ? selectedRoads[0].label
-        : `${selectedRoads.length} roads`
-      : null,
-  ].filter(Boolean);
+  // ── Breadcrumb for overlay ────────────────────────────────────────────
+  const cityLabel   = selectedCities.length > 0 ? selectedCities.map((c) => c.label).join(", ") : "City";
+  const councilLabel = selectedMunicipalCouncil || "Council";
+  const wardLabel    = selectedWardLabel || "Ward";
+  const roadsLabel   =
+    selectedRoads.length === 0
+      ? "Road"
+      : selectedRoads.length === 1
+      ? selectedRoads[0].label
+      : `${selectedRoads.length} roads`;
 
-  // Derived stats
-  const totalRoadsOnMap = filteredGeoJsonData?.features?.length || 0;
-
-  // GeoJSON key: increment every time filteredGeoJsonData changes so GeoJSON re-renders
-  const geoJsonKey = filteredGeoJsonData ? JSON.stringify(filteredGeoJsonData).length : 0;
-
+  // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans pb-6">
-      {/* ── Header ── */}
-      <div className="sticky top-0 w-full bg-white border-b border-slate-200 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] px-4 sm:px-6 lg:px-8 py-3.5 flex items-center gap-2 z-50">
-        <RoadAthena width={24} height={30} />
-        <span className="text-lg font-bold text-slate-800 tracking-tight myriad-pro-semibold">
+    <div className="h-full flex flex-col overflow-hidden bg-[#f1f5f9] text-slate-800 font-sans">
+
+      {/* ══ Header ══════════════════════════════════════════════════════ */}
+      <header className="flex-none flex items-center gap-2.5 px-5 py-2.5 bg-white border-b border-slate-200 shadow-[0_1px_6px_-2px_rgba(15,23,42,0.1)] z-50">
+        <RoadAthena width={22} height={28} />
+        <span className="text-[15px] font-bold text-slate-800 tracking-tight myriad-pro-semibold leading-none">
           RoadAthena
         </span>
-      </div>
+        <span className="ml-auto text-xs text-slate-400 font-medium hidden sm:block">
+          Haryana Road Network Dashboard
+        </span>
+      </header>
 
-      {/* ── Filter Row ── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 sm:px-6 lg:px-8 py-5 m-4 mb-4 transition-all duration-300 hover:shadow-md">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 items-end">
+      {/* ══ Filter Row ══════════════════════════════════════════════════ */}
+      <div className="flex-none bg-white border-b border-slate-200 px-4 lg:px-6 py-3 shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
           <InputDropdown
             label="City"
             value={selectedCities.length > 0 ? selectedCities[0].label : ""}
             onChange={handleCityDropdownChange}
             onClear={handleClearSelection}
             optionList={cityOptions}
-            placeholder={"Select City"}
+            placeholder="Select City"
             name="city"
-            icon={<City width={20} />}
+            icon={<City width={18} />}
             width="100%"
             isSearchable
           />
@@ -246,9 +213,9 @@ const Dashboard = () => {
             value={selectedMunicipalCouncil}
             onChange={handleMCDropdownChange}
             optionList={municipalCouncilOptions}
-            placeholder={"Select Council"}
+            placeholder="Select Council"
             name="municipalCouncil"
-            icon={<Muncipal width={20} />}
+            icon={<Muncipal width={18} />}
             width="100%"
             isSearchable
             disabled={selectedCities.length === 0}
@@ -258,9 +225,9 @@ const Dashboard = () => {
             value={selectedWardLabel}
             onChange={handleWardDropdownChange}
             optionList={wardOptions}
-            placeholder={"Select Ward"}
+            placeholder="Select Ward"
             name="ward"
-            icon={<Ward width={20} />}
+            icon={<Ward width={18} />}
             width="100%"
             isSearchable
             disabled={!selectedMunicipalCouncil}
@@ -273,68 +240,115 @@ const Dashboard = () => {
             onClearRoads={handleClearRoads}
             onSelectAllRoads={handleSelectAllRoads}
             disabled={!selectedWard}
-            icon={<Road width={20} />}
+            icon={<Road width={18} />}
           />
-          <div className="flex gap-3 h-10">
+          <div className="flex gap-2 h-[38px]">
             <button
               onClick={handleApplyFilter}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 myriad-pro-semibold whitespace-nowrap outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+              className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-sm font-semibold shadow-sm transition-all duration-150 myriad-pro-semibold whitespace-nowrap outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             >
-              Apply Filter
+              Apply
             </button>
             <button
               onClick={handleResetFilter}
-              className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors duration-200 myriad-pro-semibold whitespace-nowrap outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
+              className="flex-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 rounded-lg text-sm font-semibold transition-all duration-150 myriad-pro-semibold whitespace-nowrap outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
             >
-              Clear Filter
+              Reset
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Map Part ── */}
-      <div className="px-4 sm:px-6 lg:px-8">
-        {/* ── Map Panel ── */}
-        <div className="w-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-5 relative">
-          
+      {/* ══ Map Area — fills remaining space ════════════════════════════ */}
+      <div className="flex-1 min-h-0 overflow-hidden p-3">
+        <div className="relative h-full w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-100">
+
+          {/* ── Loading overlay ── */}
           {isLoadingCityData && (
-            <div className="absolute inset-0 z-[1000] bg-white/50 backdrop-blur-md flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 bg-white/90 px-8 py-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100/50 transform scale-100 animate-fade-in-up">
-                <div className="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
-                <p className="text-sm font-semibold text-slate-700 uppercase tracking-widest myriad-pro-semibold">Loading Map Data</p>
+            <div className="absolute inset-0 z-[1000] bg-white/60 backdrop-blur-md flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3 bg-white/90 px-8 py-6 rounded-2xl shadow-xl border border-slate-100">
+                <div className="w-9 h-9 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest myriad-pro-semibold">
+                  Loading Map Data
+                </p>
               </div>
             </div>
           )}
 
-          {/* Map Toolbar */}
-          <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-            <label className="text-sm font-semibold text-slate-600 myriad-pro-semibold">
-              Layer:
-            </label>
-            <select
-              value={mapLayer}
-              onChange={(e) => setMapLayer(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 bg-white text-slate-700 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
-            >
-              {Object.entries(mapLayers).map(([key, layer]) => (
-                <option key={key} value={key}>
-                  {layer.name}
-                </option>
-              ))}
-            </select>
+          {/* ── Floating toolbar: Layer + View Mode ── */}
+          <div className="absolute top-3 left-3 z-[500] flex flex-wrap items-center gap-2 bg-white/85 backdrop-blur-md rounded-xl px-3 py-2 shadow-lg border border-white/70">
+            {/* Layer picker */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Layer</span>
+              <select
+                value={mapLayer}
+                onChange={(e) => setMapLayer(e.target.value)}
+                className="text-xs border border-slate-200 bg-white text-slate-700 rounded-lg px-2 py-1 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+              >
+                {Object.entries(mapLayers).map(([key, layer]) => (
+                  <option key={key} value={key}>{layer.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="w-px h-4 bg-slate-200" />
+
+            {/* View mode picker */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">View</span>
+              <select
+                value={viewMode}
+                onChange={(e) => {
+                  setViewMode(e.target.value);
+                  setShowHasWidth(true);
+                  setShowNoWidth(true);
+                }}
+                className="text-xs border border-slate-200 bg-white text-slate-700 rounded-lg px-2 py-1 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+              >
+                <option value="general">General View</option>
+                <option value="category">Category View</option>
+              </select>
+            </div>
+
+            {/* Category checkboxes — only in category mode */}
+            {viewMode === "category" && (
+              <>
+                <div className="w-px h-4 bg-slate-200" />
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer select-none">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  <input
+                    type="checkbox"
+                    checked={showHasWidth}
+                    onChange={(e) => setShowHasWidth(e.target.checked)}
+                    className="accent-blue-500 w-3 h-3 cursor-pointer"
+                  />
+                  Has Width
+                </label>
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer select-none">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0" />
+                  <input
+                    type="checkbox"
+                    checked={showNoWidth}
+                    onChange={(e) => setShowNoWidth(e.target.checked)}
+                    className="accent-amber-500 w-3 h-3 cursor-pointer"
+                  />
+                  No Width
+                </label>
+              </>
+            )}
           </div>
 
-          {/* Leaflet Map */}
-          <div className="h-[420px] sm:h-[500px] lg:h-[550px] w-full bg-slate-50 z-10">
-            {filteredGeoJsonData && isValidGeoJSON(filteredGeoJsonData) ? (
+          {/* ── Leaflet Map ── */}
+          <div className="h-full w-full">
+            {displayGeoJson && isValidGeoJSON(displayGeoJson) ? (
               <MapContainer
                 key={animatedMapKey}
                 center={animatedMapCenter}
                 zoom={animatedMapZoom}
                 style={{ height: "100%", width: "100%", zIndex: 1 }}
-                zoomAnimation={true}
-                fadeAnimation={true}
-                markerZoomAnimation={true}
+                zoomAnimation
+                fadeAnimation
+                markerZoomAnimation
               >
                 <TileLayer
                   url={mapLayers[mapLayer].url}
@@ -342,81 +356,68 @@ const Dashboard = () => {
                 />
                 <GeoJSON
                   key={geoJsonKey}
-                  data={filteredGeoJsonData}
+                  data={displayGeoJson}
                   onEachFeature={onEachFeature}
                 />
-                {/* Smooth fly-to handler */}
                 <MapFlyTo flyTarget={flyTarget} />
               </MapContainer>
             ) : (
-              <div className="h-full w-full flex items-center justify-center bg-slate-50/50">
-                <p className="text-slate-400 font-medium">No map data available</p>
+              <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                <div className="text-center">
+                  <div className="text-4xl mb-3 opacity-30">🗺️</div>
+                  <p className="text-slate-400 font-medium text-sm">No map data available</p>
+                </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* ── Road Detail — Below Map ── */}
-      <div className="flex flex-col lg:flex-row gap-4 px-4 sm:px-6 lg:px-8">
-        {/* Context Info & Stats */}
-        <div className="bg-white shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl border border-slate-200 px-6 py-5 w-full">
-          {/* Context Info */}
-          <div className="mb-4 pb-4 border-b border-slate-100">
-            <p className="text-xl font-bold text-slate-800 tracking-tight myriad-pro-semibold">
+          {/* ── Region Overview — bottom-right frosted overlay ── */}
+          <div className="absolute bottom-4 right-3 z-[500] bg-white/75 backdrop-blur-lg rounded-2xl border border-white/70 shadow-xl px-4 py-3 min-w-[200px] max-w-[290px] pointer-events-none">
+            {/* Label */}
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
               Region Overview
             </p>
-            <p className="text-sm font-medium text-slate-500 mt-1 myriad-pro-regular">
-              {selectedCities.length > 0
-                ? selectedCities.map((c) => c.label).join(", ")
-                : "City"}{" "}
-              <span className="text-slate-300 mx-1">•</span> {selectedMunicipalCouncil || "Council"}{" "}
-              <span className="text-slate-300 mx-1">•</span> {selectedWardLabel || "Ward"}{" "}
-              <span className="text-slate-300 mx-1">•</span>{" "}
-              {selectedRoads.length > 0
-                ? selectedRoads.length === 1
-                  ? selectedRoads[0].label
-                  : `${selectedRoads.length} roads`
-                : "Road"}
+            {/* Breadcrumb */}
+            <p className="text-[11px] text-slate-600 font-medium mb-2.5 leading-snug truncate">
+              <span className="text-slate-800 font-semibold">{cityLabel}</span>
+              <span className="text-slate-300 mx-1">•</span>{councilLabel}
+              <span className="text-slate-300 mx-1">•</span>{wardLabel}
+              <span className="text-slate-300 mx-1">•</span>{roadsLabel}
             </p>
-          </div>
-
-          {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-2">
-            {STATS_TEMPLATE.map(({ label, value, unit, icon, borderColor }) => (
-              <div
-                key={label}
-                className={`bg-slate-50/50 rounded-xl px-5 py-4 border border-slate-100 shadow-sm hover:shadow relative overflow-hidden group transition-all duration-300`}
-              >
-                {/* Left accent border */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${borderColor ? borderColor.replace('border-l-', 'bg-') : 'bg-blue-500'} group-hover:w-1.5 transition-all duration-300`}></div>
-                
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg opacity-80">{icon}</span>
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest myriad-pro-semibold">
-                    {label}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-1.5 pl-1">
-                  <span className="text-2xl font-bold text-slate-800 tracking-tight myriad-pro-regular">
-                    {isFilterApplied ? value : "NA"}
-                  </span>
-                  {unit && (
-                    <span className="text-xs font-semibold text-slate-400">
-                      {isFilterApplied ? unit : ""}
+            {/* Stat pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {STATS_TEMPLATE.map(({ label, value, unit, borderColor }) => {
+                const pillColor = borderColor?.includes("blue")
+                  ? "bg-blue-50 border-blue-100 text-blue-700"
+                  : borderColor?.includes("green")
+                  ? "bg-green-50 border-green-100 text-green-700"
+                  : "bg-slate-50 border-slate-100 text-slate-700";
+                return (
+                  <div
+                    key={label}
+                    className={`flex items-baseline gap-1 rounded-lg px-2.5 py-1.5 border ${pillColor}`}
+                  >
+                    <span className="text-[12px] font-bold">
+                      {isFilterApplied ? value : "—"}
                     </span>
-                  )}
-                </div>
-              </div>
-            ))}
+                    {unit && isFilterApplied && (
+                      <span className="text-[9px] font-medium opacity-70">{unit}</span>
+                    )}
+                    <span className="text-[9px] font-semibold uppercase tracking-wide opacity-60 ml-0.5">
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Road Details Dialog ── */}
-      <RoadDetailsDialog 
-        roadId={selectedRoadId} 
-        onClose={() => setSelectedRoadId(null)} 
+      {/* ══ Road Details Dialog ══════════════════════════════════════════ */}
+      <RoadDetailsDialog
+        roadId={selectedRoadId}
+        onClose={() => setSelectedRoadId(null)}
       />
     </div>
   );

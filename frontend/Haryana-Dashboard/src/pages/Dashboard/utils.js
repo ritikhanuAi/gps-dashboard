@@ -204,27 +204,35 @@ export const isValidGeoJSON = (data) => {
 };
 
 /**
- * Get feature style based on quality
+ * Get feature style based on viewMode:
+ *  - 'general'  → quality-based colours (green / amber / red)
+ *  - 'category' → width-based colours  (blue = has width, amber = no/zero width)
+ *
+ * @param {object} feature  - GeoJSON feature
+ * @param {string} viewMode - 'general' | 'category'
  */
-export const getFeatureStyle = (feature) => {
-  const quality = feature.properties?.quality;
-  let color = "#3388ff"; // Default blue
-
-  if (quality !== undefined) {
-    if (quality > 80) {
-      color = "#22c55e"; // Green for good quality
-    } else if (quality > 50) {
-      color = "#f59e0b"; // Amber for average quality
-    } else {
-      color = "#ef4444"; // Red for poor quality
-    }
+export const getFeatureStyle = (feature, viewMode = "general") => {
+  if (viewMode === "category") {
+    const w = feature.properties?.width;
+    const hasWidth = w !== null && w !== undefined && parseFloat(w) > 0;
+    return {
+      color: hasWidth ? "#3b82f6" : "#f59e0b", // blue-500 | amber-400
+      weight: 4,
+      opacity: 0.9,
+    };
   }
 
-  return {
-    color: color,
-    weight: 4,
-    opacity: 0.9,
-  };
+  // General: quality-based colouring
+  const quality = feature.properties?.quality;
+  let color = "#3388ff"; // default blue
+
+  if (quality !== undefined) {
+    if (quality > 80)      color = "#22c55e"; // green  — good
+    else if (quality > 50) color = "#f59e0b"; // amber  — average
+    else                   color = "#ef4444"; // red    — poor
+  }
+
+  return { color, weight: 4, opacity: 0.9 };
 };
 
 /**
