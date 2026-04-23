@@ -130,6 +130,9 @@ const Dashboard = () => {
 
   // ── Zoom Error Overlay ────────────────────────────────────────────────
   const [showZoomError, setShowZoomError] = useState(false);
+  
+  // ── WMS Loading State ─────────────────────────────────────────────────
+  const [isWmsLoading, setIsWmsLoading] = useState(true);
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleClearSelection = () => {
@@ -355,14 +358,15 @@ const Dashboard = () => {
         <div className="relative h-full w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-100">
 
           {/* ── Loading overlay ── */}
-          {(isLoadingCityData || isLoadingMunicipalCouncil || isLoadingWard || isLoadingRoad) && (
+          {(isLoadingCityData || isLoadingMunicipalCouncil || isLoadingWard || isLoadingRoad || (selectedCities.length === 0 && isWmsLoading)) && (
             <div className="absolute inset-0 z-[1000] bg-white/50 backdrop-blur-sm flex items-center justify-center">
               <div className="flex flex-col items-center gap-3 bg-white/95 px-8 py-6 rounded-2xl shadow-xl border border-slate-100">
                 <div className="w-9 h-9 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-widest myriad-pro-semibold">
                   {isLoadingCityData ? "Loading Map Data" :
                     isLoadingMunicipalCouncil ? "Loading Circles…" :
-                      isLoadingWard ? "Loading Wards…" : "Loading Roads…"}
+                      isLoadingWard ? "Loading Wards…" :
+                        (selectedCities.length === 0 && isWmsLoading) ? "Loading Geoserver Data…" : "Loading Roads…"}
                 </p>
               </div>
             </div>
@@ -511,6 +515,11 @@ const Dashboard = () => {
                     format="image/png"
                     transparent={true}
                     sld_body={wmsSldBody}
+                    eventHandlers={{
+                      loading: () => setIsWmsLoading(true),
+                      load: () => setIsWmsLoading(false),
+                      tileerror: () => setIsWmsLoading(false),
+                    }}
                   />
                 ) : (
                   <GeoJSON

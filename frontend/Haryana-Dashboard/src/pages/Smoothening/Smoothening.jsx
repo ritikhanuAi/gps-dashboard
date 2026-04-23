@@ -344,6 +344,7 @@ const Smoothening = () => {
       await updateRoadGeometry(roadDetail.id, editedGeometry);
       setRoadGeometry(editedGeometry);
       setSmoothedGeometry(null);
+      setEditMode('edit');
       showMessage('success', '✅ Geometry saved successfully!');
     } catch (err) {
       showMessage('error', err.response?.data?.error || 'Failed to save geometry');
@@ -597,9 +598,9 @@ const Smoothening = () => {
             <div className="smo-tabs">
               {[
                 { key: 'geometry',   label: '🗺️ Geometry' },
-                { key: 'smooth',     label: '✨ Smooth' },
+                { key: 'smooth',     label: '✨ Smooth', hidden: true },
                 { key: 'attributes', label: '📝 Attributes' },
-              ].map(({ key, label }) => (
+              ].filter(t => !t.hidden).map(({ key, label }) => (
                 <button key={key} type="button"
                   className={`smo-tab ${activePanel === key ? 'smo-tab--active' : ''}`}
                   onClick={() => setActivePanel(key)}>

@@ -38,7 +38,7 @@ const ChevronRight = () => (
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/", Icon: HomeIcon, exact: true },
   { label: "Upload GeoJSON", path: "/upload", Icon: UploadIcon, exact: false },
-  { label: "Smoothening", path: "/smoothening", Icon: SmoothIcon, exact: false },
+  { label: "Edit Roads and Attribs", path: "/smoothening", Icon: SmoothIcon, exact: false },
 ];
 
 // ── Sidebar component ─────────────────────────────────────────────────────
