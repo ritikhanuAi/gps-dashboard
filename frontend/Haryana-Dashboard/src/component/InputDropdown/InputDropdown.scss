@@ -9,10 +9,11 @@
     display: flex;
 
     .label-text {
-      font-size: 0.9rem;
-      font-family: "myriad-pro-semibold";
-      color: #000000;
-      font-weight: bold;
+      font-size: 0.95rem;
+      font-family: "Inter", "myriad-pro-semibold", sans-serif;
+      color: #1e293b;
+      font-weight: 700;
+      letter-spacing: 0.01em;
     }
   }
 
@@ -20,24 +21,25 @@
     position: relative;
 
     .dropdown-header {
-      padding: 8px 12px;
-      border: 1px solid #ede8dc;
-      border-radius: 5px;
-      font-size: 0.85rem;
-      color: #131313;
+      padding: 10px 13px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #1e293b;
       background-color: #ffffff;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      transition: border-color 0.3s, box-shadow 0.3s;
+      transition: border-color 0.2s, box-shadow 0.2s;
 
       &:hover {
-        border-color: #131313a6;
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
       }
 
       &.disabled {
@@ -50,9 +52,9 @@
       }
 
       .placeholder-text {
-        font-size: 0.85rem;
-        font-family: "myriad-pro-regular";
-        color: #131313a6;
+        font-size: 0.9rem;
+        font-family: "Inter", "myriad-pro-regular", sans-serif;
+        color: #94a3b8;
       }
 
       .dropdown-arrow {
@@ -145,10 +147,10 @@
 
           p {
             padding: 10px 15px;
-            font-size: 0.85rem;
-            font-family: "myriad-pro-regular";
-            color: #131313;
-            line-height: 1rem;
+            font-size: 0.9rem;
+            font-family: "Inter", "myriad-pro-regular", sans-serif;
+            color: #1e293b;
+            line-height: 1.2rem;
 
             .highlight-text {
               background-color: #ffc107;

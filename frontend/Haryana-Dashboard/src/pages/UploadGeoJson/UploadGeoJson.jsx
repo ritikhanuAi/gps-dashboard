@@ -1,5 +1,6 @@
-import { useRef, useState, useCallback } from "react";
-import { uploadGeoJsonFiles } from "../../api/uploadApi";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { uploadGeoJsonFiles, getCities } from "../../api/uploadApi";
+import { invalidateRoadsCache } from "../../api/RoadApi";
 import "./UploadGeoJson.css";
 
 // ── Icons ─────────────────────────────────────────────────────────────────
@@ -58,10 +59,40 @@ const mkEntry = (file) => ({ file, status: "pending", error: null });
 // ── Component ──────────────────────────────────────────────────────────────
 const UploadGeoJson = () => {
   const fileInputRef = useRef(null);
+  const [uploadMode, setUploadMode] = useState(null); // 'new' | 'update' | null
   const [entries, setEntries]     = useState([]); // { file, status, error }[]
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [summary, setSummary]     = useState(null); // { succeeded, failed }
+  const [globalError, setGlobalError] = useState(null);
+
+  // City selection state
+  const [cities, setCities] = useState([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [selectedCityId, setSelectedCityId] = useState("");
+
+  useEffect(() => {
+    if (uploadMode === 'update' && cities.length === 0) {
+      const fetchCities = async () => {
+        setIsLoadingCities(true);
+        setGlobalError(null);
+        try {
+          const data = await getCities();
+          if (data && data.success && data.cities) {
+            setCities(data.cities);
+          } else {
+            setGlobalError("Failed to fetch cities: Unexpected response format.");
+          }
+        } catch (error) {
+          console.error("Failed to fetch cities:", error);
+          setGlobalError("Failed to fetch cities. Please check your connection.");
+        } finally {
+          setIsLoadingCities(false);
+        }
+      };
+      fetchCities();
+    }
+  }, [uploadMode, cities.length]);
 
   // ── Add files (merge, skip dupes by name) ──────────────────────────────
   const addFiles = useCallback((rawFiles) => {
@@ -73,7 +104,10 @@ const UploadGeoJson = () => {
     });
 
     if (invalid.length) {
-      // show a quick toast or just skip silently — we'll show inline
+      setGlobalError(`Skipped ${invalid.length} file(s) with unsupported formats. Only .json or .geojson allowed.`);
+      setTimeout(() => setGlobalError(null), 6000);
+    } else {
+      setGlobalError(null);
     }
 
     setEntries((prev) => {
@@ -109,6 +143,7 @@ const UploadGeoJson = () => {
   const clearAll = () => {
     setEntries([]);
     setSummary(null);
+    setGlobalError(null);
   };
 
   // ── Upload all pending files ───────────────────────────────────────────
@@ -140,11 +175,17 @@ const UploadGeoJson = () => {
             i === globalIdx ? { ...e, status, error: error || null } : e
           )
         );
-      }
+      },
+      uploadMode === 'update' ? selectedCityId : null
     );
 
     setSummary({ succeeded, failed });
     setIsUploading(false);
+
+    if (succeeded > 0) {
+      // Invalidate the cache so the map dashboard refetches the roads data
+      invalidateRoadsCache();
+    }
   };
 
   // ── Retry failed files ────────────────────────────────────────────────
@@ -191,34 +232,102 @@ const UploadGeoJson = () => {
       {/* ── Body ── */}
       <div className="upage__body">
         <div className="ucard">
+          {!uploadMode ? (
+            <div className="umode-selector">
+              <h2 className="umode-selector__title">Select Upload Type</h2>
+              <p className="umode-selector__subtitle">Choose whether you are adding a new city or updating an existing one before uploading files.</p>
+              
+              <div className="umode-cards">
+                <button className="umode-card" onClick={() => setUploadMode('new')}>
+                  <div className="umode-card__icon"><AddFileIcon /></div>
+                  <div className="umode-card__content">
+                    <h3>Upload New City</h3>
+                    <p>Add a completely new city road network to the system.</p>
+                  </div>
+                </button>
+                <button className="umode-card" onClick={() => setUploadMode('update')}>
+                  <div className="umode-card__icon"><UploadIcon /></div>
+                  <div className="umode-card__content">
+                    <h3>Update Existing City</h3>
+                    <p>Append or replace data in an existing city network.</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="umode-header">
+                <button className="ulink" onClick={() => {
+                  setUploadMode(null);
+                  setSelectedCityId("");
+                  clearAll();
+                }}>
+                  ← Back to selection
+                </button>
+                <span className={`ubadge ${uploadMode === 'new' ? 'ubadge--success' : 'ubadge--pending'}`}>
+                  {uploadMode === 'new' ? 'New City Mode' : 'Update City Mode'}
+                </span>
+              </div>
 
-          {/* ── Drop zone ── */}
-          <div
-            className={`udropzone ${isDragging ? "udropzone--drag" : ""}`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              id="geojson-file-input"
-              type="file"
-              accept=".geojson,.json"
-              multiple
-              className="udropzone__input"
-              onChange={handleInputChange}
-            />
+              {uploadMode === 'update' && (
+                <div className="ucity-selector">
+                  <label htmlFor="city-select" className="ucity-selector__label">
+                    Select City to Update
+                  </label>
+                  {isLoadingCities ? (
+                    <div className="ucity-selector__loading">Loading cities...</div>
+                  ) : (
+                    <select
+                      id="city-select"
+                      className="ucity-selector__select"
+                      value={selectedCityId}
+                      onChange={(e) => setSelectedCityId(e.target.value)}
+                    >
+                      <option value="" disabled>-- Choose a city --</option>
+                      {cities.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {globalError && (
+                <div className="uglobal-error">
+                  <ErrorCircle /> {globalError}
+                </div>
+              )}
+
+              {/* ── Drop zone ── */}
+              <div
+                className={`udropzone ${isDragging ? "udropzone--drag" : ""} ${uploadMode === 'update' && !selectedCityId ? "udropzone--disabled" : ""}`}
+                onDrop={uploadMode === 'update' && !selectedCityId ? undefined : handleDrop}
+                onDragOver={uploadMode === 'update' && !selectedCityId ? undefined : handleDragOver}
+                onDragLeave={uploadMode === 'update' && !selectedCityId ? undefined : handleDragLeave}
+                onClick={uploadMode === 'update' && !selectedCityId ? undefined : () => fileInputRef.current?.click()}
+              >
+              <input
+                ref={fileInputRef}
+                id="geojson-file-input"
+                type="file"
+                accept=".geojson,.json"
+                multiple
+                className="udropzone__input"
+                onChange={handleInputChange}
+                disabled={uploadMode === 'update' && !selectedCityId}
+              />
             <div className="udropzone__icon-ring">
               <UploadIcon />
             </div>
             <p className="udropzone__primary">
               {isDragging ? "Drop files here" : "Drag & drop GeoJSON files"}
             </p>
-            <p className="udropzone__secondary">
-              or <span className="udropzone__browse">click to browse</span>
-            </p>
-            <p className="udropzone__formats">Accepts .geojson · .json · multiple files OK</p>
+              <p className="udropzone__secondary">
+                {(uploadMode === 'update' && !selectedCityId) ? "Please select a city first" : <><span className="udropzone__browse">click to browse</span></>}
+              </p>
+              <p className="udropzone__formats">Accepts .geojson · .json · multiple files OK</p>
           </div>
 
           {/* ── File list ── */}
@@ -318,9 +427,9 @@ const UploadGeoJson = () => {
           <div className="uactions">
             <button
               id="upload-geojson-btn"
-              className={`ubtn ubtn--primary ${(!uploadableCount || isUploading) ? "ubtn--disabled" : ""}`}
+              className={`ubtn ubtn--primary ${( !uploadableCount || isUploading || (uploadMode === 'update' && !selectedCityId) ) ? "ubtn--disabled" : ""}`}
               onClick={handleUpload}
-              disabled={!uploadableCount || isUploading}
+              disabled={ !uploadableCount || isUploading || (uploadMode === 'update' && !selectedCityId) }
             >
               {isUploading ? (
                 <><span className="ubtn__spinner" /> Uploading…</>
@@ -335,6 +444,8 @@ const UploadGeoJson = () => {
               </button>
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

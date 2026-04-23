@@ -1,0 +1,269 @@
+/* ═══════════════════════════════════════════════════════════════
+   RoadDetailsDialog — premium popup
+   rdp- prefix (Road Detail Popup)
+═══════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+.rdp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(4px);
+  animation: rdpFadeIn .2s ease-out;
+  padding: 16px;
+}
+@keyframes rdpFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Dialog shell ────────────────────────────────────────────── */
+.rdp-dialog {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  width: min(780px, 100%);
+  max-height: min(90vh, 820px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(15,23,42,.06),
+    0 8px 24px -4px rgba(15,23,42,.18),
+    0 32px 64px -16px rgba(15,23,42,.24);
+  animation: rdpSlideUp .28s cubic-bezier(.22,1,.36,1);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+@keyframes rdpSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Mobile: full-width bottom sheet */
+@media (max-width: 600px) {
+  .rdp-backdrop { align-items: flex-end; padding: 0; }
+  .rdp-dialog {
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 80vh;
+  }
+}
+
+/* ── Accent bar ──────────────────────────────────────────────── */
+.rdp-accent-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #1e6fd9 0%, #6366f1 55%, #8b5cf6 100%);
+  flex-shrink: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.rdp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  background: #fff;
+}
+.rdp-header__text { flex: 1; min-width: 0; }
+.rdp-header__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+  margin: 0 0 0.25rem;
+}
+.rdp-header__name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+  word-break: break-word;
+}
+.rdp-header__badge {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.15rem 0.55rem;
+  letter-spacing: 0.04em;
+}
+.rdp-close-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  margin-top: 2px;
+}
+.rdp-close-btn:hover { background: #fee2e2; color: #dc2626; }
+
+/* ── Scrollable body ─────────────────────────────────────────── */
+.rdp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-height: 0;
+}
+.rdp-body::-webkit-scrollbar { width: 5px; }
+.rdp-body::-webkit-scrollbar-track { background: transparent; }
+.rdp-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* ── Section ─────────────────────────────────────────────────── */
+.rdp-section { display: flex; flex-direction: column; gap: 0.5rem; }
+.rdp-section__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #94a3b8;
+  margin: 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.rdp-section__title::before {
+  content: '';
+  display: block;
+  width: 3px; height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #3b82f6, #6366f1);
+  flex-shrink: 0;
+}
+
+/* ── Grid: 3 columns on wide, 2 on medium, 1 on small ───────── */
+.rdp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem 0.65rem;
+}
+@media (max-width: 520px) {
+  .rdp-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Row (key-value pair) ────────────────────────────────────── */
+.rdp-row {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem 0.4rem;
+  min-width: 0;
+  transition: border-color 0.12s, background 0.12s;
+}
+.rdp-row:hover { background: #f0f7ff; border-color: #bfdbfe; }
+.rdp-row--wide { grid-column: span 3; }
+.rdp-row--wide-2 { grid-column: span 2; }
+
+.rdp-key {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+.rdp-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  word-break: break-word;
+  line-height: 1.4;
+  margin-top: 0.12rem;
+}
+.rdp-val--highlight {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.rdp-val--muted { color: #94a3b8; font-weight: 500; }
+
+/* ── Loading / error state ───────────────────────────────────── */
+.rdp-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3.5rem 1rem;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+}
+.rdp-state--error { color: #dc2626; }
+
+.rdp-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: rdpSpin .7s linear infinite;
+}
+@keyframes rdpSpin { to { transform: rotate(360deg); } }
+
+/* ── Global ID ───────────────────────────────────────────────── */
+.rdp-global-id {
+  font-size: 9px;
+  color: #cbd5e1;
+  text-align: center;
+  font-family: monospace;
+  word-break: break-all;
+  margin: 0.25rem 0 0;
+}
+
+/* ── Sticky footer ───────────────────────────────────────────── */
+.rdp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+  gap: 0.75rem;
+}
+.rdp-footer__id {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.rdp-footer-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #374151;
+}
+.rdp-footer-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.rdp-footer-btn--close { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.rdp-footer-btn--close:hover { background: #1e40af; border-color: #1e40af; }

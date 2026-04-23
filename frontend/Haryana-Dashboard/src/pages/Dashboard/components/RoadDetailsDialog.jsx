@@ -1,115 +1,186 @@
 import { useEffect, useState } from "react";
 import { fetchRoadDetailsById } from "../../../api/RoadApi";
+import "./RoadDetailsDialog.css";
 
+// ─── Formatters ───────────────────────────────────────────────────────────────
+const fmt = (v) => {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  return String(v).trim();
+};
+const fmtDate = (ms) => {
+  if (!ms) return null;
+  try {
+    return new Date(ms).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  } catch { return null; }
+};
+
+// ─── Atoms ────────────────────────────────────────────────────────────────────
+const Row = ({ label, value, wide, wide2, highlight }) => {
+  const display = value ?? "—";
+  const isEmpty = value === null || value === undefined;
+  return (
+    <div className={`rdp-row${wide ? " rdp-row--wide" : ""}${wide2 ? " rdp-row--wide-2" : ""}`}>
+      <span className="rdp-key">{label}</span>
+      <span className={`rdp-val${highlight ? " rdp-val--highlight" : ""}${isEmpty ? " rdp-val--muted" : ""}`}>
+        {display}
+      </span>
+    </div>
+  );
+};
+
+const Section = ({ title, children }) => (
+  <div className="rdp-section">
+    <p className="rdp-section__title">{title}</p>
+    <div className="rdp-grid">{children}</div>
+  </div>
+);
+
+// ─── Main dialog ──────────────────────────────────────────────────────────────
 const RoadDetailsDialog = ({ roadId, onClose }) => {
-  const [roadDetails, setRoadDetails] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
     if (!roadId) return;
-
-    const loadDetails = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetchRoadDetailsById(roadId);
-        if (response && response.data) {
-          setRoadDetails(response.data);
-        } else {
-          setError("No details found for this road.");
-        }
-      } catch (err) {
-        console.error("Failed to load road details:", err);
-        setError("Failed to load road details.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDetails();
+    setLoading(true); setError(null); setData(null);
+    fetchRoadDetailsById(roadId)
+      .then((res) => {
+        const d = res?.data ?? res;
+        if (d && typeof d === "object") setData(d);
+        else setError("No details found for this road.");
+      })
+      .catch(() => setError("Failed to load road details."))
+      .finally(() => setLoading(false));
   }, [roadId]);
 
   if (!roadId) return null;
 
+  const d = data;
+  const roadName = d
+    ? (fmt(d.road_name) || "Unnamed Road")
+    : "Loading…";
+
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300">
-      <div 
-        className="bg-white/95 backdrop-blur-md w-full max-w-md rounded-2xl shadow-2xl border border-white/40 overflow-hidden transform animate-fade-in-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100/50 bg-slate-50/50">
-          <h3 className="text-lg font-bold text-slate-800 myriad-pro-semibold">Road Details</h3>
-          <button 
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            ✕
-          </button>
+    <div className="rdp-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="rdp-dialog" onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Top accent bar ── */}
+        <div className="rdp-accent-bar" />
+
+        {/* ── Header ── */}
+        <div className="rdp-header">
+          <div className="rdp-header__text">
+            <p className="rdp-header__eyebrow">Road Details</p>
+            <h2 className="rdp-header__name">{roadName}</h2>
+            {d?.r_temp_id && (
+              <span className="rdp-header__badge">ID: {d.r_temp_id}</span>
+            )}
+          </div>
+          <button className="rdp-close-btn" onClick={onClose} aria-label="Close dialog">✕</button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto thin-scrollbar">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <div className="w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
-              <p className="text-sm text-slate-500 font-medium tracking-wide">Fetching details...</p>
-            </div>
-          ) : error ? (
-            <div className="py-8 text-center">
-              <p className="text-red-500 font-medium">{error}</p>
-            </div>
-          ) : roadDetails ? (
-            <div className="space-y-4">
-              
-              {/* ID & Name Section */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Road ID</span>
-                  <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">#{roadDetails.id}</span>
-                </div>
-                <div className="mt-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-1">Path</span>
-                  <p className="font-semibold text-slate-800 text-sm leading-relaxed">
-                    {roadDetails.start_pt ? roadDetails.start_pt.trim() : "Unknown"} 
-                    <span className="text-slate-300 mx-2">→</span> 
-                    {roadDetails.end_pt ? roadDetails.end_pt.trim() : "Unknown"}
-                  </p>
-                </div>
-              </div>
+        {/* ── Scrollable body ── */}
+        <div className="rdp-body">
 
-              {/* Grid Details */}
-              <div className="grid grid-cols-2 gap-3">
-                <DetailItem label="Ward" value={roadDetails.ward} />
-                <DetailItem label="Source" value={roadDetails.source} />
-                <DetailItem label="Width (m)" value={roadDetails.width} />
-                <DetailItem label="Carriage" value={roadDetails.carriage} />
-                <DetailItem label="GIS Length" value={roadDetails.gis_length} />
-                <DetailItem label="Doc Length" value={roadDetails.lengthdoc} />
-              </div>
+          {loading && (
+            <div className="rdp-state">
+              <div className="rdp-spinner" />
+              <p>Fetching road details…</p>
+            </div>
+          )}
 
-              {/* Constituency */}
-              {roadDetails.mla_cons && (
-                <div className="mt-3">
-                  <DetailItem label="MLA Constituency" value={roadDetails.mla_cons.trim()} fullWidth />
-                </div>
+          {!loading && error && (
+            <div className="rdp-state rdp-state--error">
+              <p>⚠ {error}</p>
+            </div>
+          )}
+
+          {!loading && !error && d && (
+            <>
+              {/* ── Identity ── */}
+              <Section title="Identity">
+                <Row label="Road ID"      value={fmt(d.id) ? `#${fmt(d.id)}` : null} highlight />
+                <Row label="GIS ID"       value={fmt(d.gis_id)} />
+                <Row label="Object ID"    value={fmt(d.object_id)} />
+                <Row label="Temp Road ID" value={fmt(d.r_temp_id)} wide />
+                <Row label="Temp ID"      value={fmt(d.temp_road_id)} />
+              </Section>
+
+              {/* ── Location ── */}
+              <Section title="Location">
+                <Row label="Circle"      value={fmt(d.circle)} wide2 />
+                <Row label="Division"    value={fmt(d.division)} />
+                <Row label="District"    value={fmt(d.district)} />
+                <Row label="Ward / Div Code" value={fmt(d.div_code)} />
+                <Row label="Circle Code" value={fmt(d.circle_code)} />
+                <Row label="Dist Code"   value={fmt(d.dist_code)} />
+                <Row label="MLA Const."  value={fmt(d.mla_constituency)} wide />
+              </Section>
+
+              {/* ── Road Properties ── */}
+              <Section title="Road Properties">
+                <Row label="Width"          value={d.width != null ? `${d.width} m` : null} />
+                <Row label="Carriage"       value={d.carriage != null ? `${d.carriage} m` : null} />
+                <Row label="GIS Length"     value={d.gis_length != null ? `${d.gis_length.toFixed(3)} km` : null} />
+                <Row label="Shape Length"   value={d.shape_length != null ? `${d.shape_length.toFixed(2)} m` : null} />
+                <Row label="Road Type"      value={fmt(d.road_type)} />
+                <Row label="Road Category"  value={fmt(d.road_category)} />
+                <Row label="Crust"          value={fmt(d.crust)} />
+                <Row label="Length (doc)"   value={fmt(d.length_doc)} />
+              </Section>
+
+              {/* ── Route ── */}
+              <Section title="Route">
+                <Row label="From" value={fmt(d.start_point)} wide />
+                <Row label="To"   value={fmt(d.end_point)} wide />
+                <Row label="DLP From" value={fmt(d.dlp_from)} />
+                <Row label="DLP To"   value={fmt(d.dlp_to)} />
+              </Section>
+
+              {/* ── Administration ── */}
+              <Section title="Administration">
+                <Row label="Status"      value={fmt(d.status)} />
+                <Row label="Road Status" value={fmt(d.road_status)} />
+                <Row label="Ownership"   value={fmt(d.ownership)} />
+                <Row label="Department"  value={fmt(d.department)} />
+                <Row label="Source"      value={fmt(d.source)} />
+                <Row label="HARSAC"      value={fmt(d.harsac_status)} />
+              </Section>
+
+              {/* ── Survey & Engineering ── */}
+              <Section title="Survey & Engineering">
+                <Row label="Engineer"    value={fmt(d.engineer_name)} wide2 />
+                <Row label="Created By"  value={fmt(d.created_user)} />
+                <Row label="Created"     value={fmtDate(d.created_date)} />
+                <Row label="Last Editor" value={fmt(d.last_edited_user)} />
+                <Row label="Edit Date"   value={fmtDate(d.last_edited_date)} />
+              </Section>
+
+              {/* ── Remarks ── */}
+              {d.remarks && (
+                <Section title="Remarks">
+                  <Row label="Remarks" value={fmt(d.remarks)} wide />
+                </Section>
               )}
-              
-            </div>
-          ) : null}
+
+              <p className="rdp-global-id">{d.global_id}</p>
+            </>
+          )}
+        </div>
+
+        {/* ── Sticky footer ── */}
+        <div className="rdp-footer">
+          <span className="rdp-footer__id">
+            {d ? `Road #${fmt(d.id) ?? "—"}` : ""}
+          </span>
+          <button className="rdp-footer-btn rdp-footer-btn--close" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 };
-
-// Helper component for detail items
-const DetailItem = ({ label, value, fullWidth = false }) => (
-  <div className={`bg-white rounded-lg p-3 border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] ${fullWidth ? 'col-span-2 flex justify-between items-center' : 'flex flex-col gap-1'}`}>
-    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
-    <span className="text-sm font-semibold text-slate-700 truncate">{value !== null && value !== undefined && value !== "" ? value : "—"}</span>
-  </div>
-);
 
 export default RoadDetailsDialog;

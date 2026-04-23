@@ -16,6 +16,12 @@ const UploadIcon = () => (
   </svg>
 );
 
+const SmoothIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+    <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" />
+  </svg>
+);
+
 const ChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
     <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -32,6 +38,7 @@ const ChevronRight = () => (
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/", Icon: HomeIcon, exact: true },
   { label: "Upload GeoJSON", path: "/upload", Icon: UploadIcon, exact: false },
+  { label: "Smoothening", path: "/smoothening", Icon: SmoothIcon, exact: false },
 ];
 
 // ── Sidebar component ─────────────────────────────────────────────────────
@@ -47,7 +54,7 @@ const Sidebar = () => {
   const toggle = () => {
     setCollapsed((prev) => {
       const next = !prev;
-      try { localStorage.setItem("sidebar_collapsed", String(next)); } catch {}
+      try { localStorage.setItem("sidebar_collapsed", String(next)); } catch { }
       return next;
     });
   };
@@ -58,7 +65,7 @@ const Sidebar = () => {
       <div className="sidebar__brand">
         <RoadAthena width={24} height={30} />
         {!collapsed && (
-          <span className="sidebar__brand-name">RoadAthena</span>
+          <span className="sidebar__brand-name">RoadAtthena</span>
         )}
       </div>
 

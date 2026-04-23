@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
-import { fetchRoadData, fetchRoadDataByCity, fetchRoadsByWard, fetchUniqueWards } from "../../api/RoadApi";
+import { fetchAllRoadsCached, fetchRegionOverview, filterRoads } from "../../api/RoadApi";
 import { HARYANA_CENTER, HARYANA_DEFAULT_ZOOM } from "./constants";
 import {
   extractUniqueCities,
@@ -8,11 +8,12 @@ import {
   extractUniqueRoads,
   getBoundsForCities,
   getBoundsForGeoJson,
-  isValidGeoJSON
+  isValidGeoJSON,
 } from "./utils";
 
 /**
- * Custom hook to manage road data fetching and map state
+ * Custom hook to manage road data fetching and map state.
+ * Initial load calls GET /api/filterRoads (no params → all roads).
  */
 export const useRoadData = () => {
   const [geoJsonData, setGeoJsonData] = useState(null);
@@ -26,16 +27,14 @@ export const useRoadData = () => {
   // Target bounds for smooth fly-to (instead of re-mounting)
   const [flyTarget, setFlyTarget] = useState(null);
 
-  // Load road data on mount
+  // Load all road data on mount
   useEffect(() => {
     const loadRoadData = async () => {
       setIsLoadingCityData(true);
       try {
-        const response = await fetchRoadData();
-        console.log("Road API Response:", response);
-
-        const geoData = response.data;
-        console.log("GeoJSON Data:", geoData);
+        // Use module-level cache — no extra hit if Dashboard was visited before
+        const geoData = await fetchAllRoadsCached();
+        console.log("Initial GeoJSON load:", geoData);
 
         if (isValidGeoJSON(geoData)) {
           setGeoJsonData(geoData);
@@ -53,7 +52,7 @@ export const useRoadData = () => {
           setCityOptions([]);
         }
       } catch (error) {
-        console.log("Error fetching road data:", error);
+        console.error("Error fetching road data:", error);
       } finally {
         setIsLoadingCityData(false);
       }
@@ -82,63 +81,100 @@ export const useRoadData = () => {
 
 
 /**
- * Custom hook to manage filter cascade logic
- * City -> Municipal Council -> Ward -> Road(s)
+ * Custom hook to manage filter cascade logic using /api/filterRoads.
+ *
+ * Cascade:  City (city_id) → Circle (circle) → Ward (ward) → Road (road_id)
+ *
+ * Each level:
+ *   1. Calls the API with all currently-locked params
+ *   2. Updates the map with the returned GeoJSON
+ *   3. Extracts the next level's options from the returned features
  */
-export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCenter, setMapZoom, setMapKey, setFlyTarget) => {
+export const useFilterCascade = (
+  geoJsonData,
+  setFilteredGeoJsonData,
+  setMapCenter,
+  setMapZoom,
+  setMapKey,
+  setFlyTarget
+) => {
+  // ── Selection state ───────────────────────────────────────────────────────
   const [selectedCities, setSelectedCities] = useState([]);
-  const [selectedMunicipalCouncil, setSelectedMunicipalCouncil] = useState("");
-  const [selectedMunicipalCouncilOption, setSelectedMunicipalCouncilOption] = useState(null);
-  const [selectedWard, setSelectedWard] = useState(""); // Single select - stores ward VALUE (number string)
-  const [selectedWardLabel, setSelectedWardLabel] = useState(""); // Display label for ward
-  const [selectedRoads, setSelectedRoads] = useState([]); // Array for multi-select
-  const [wardGeoJsonData, setWardGeoJsonData] = useState(null); // GeoJSON for selected ward (without No Name roads)
 
+  // Circle (formerly "Municipal Council")
+  const [selectedMunicipalCouncil, setSelectedMunicipalCouncil] = useState("");   // display label
+  // We also expose a setter-compatible alias so index.jsx keeps working
+  const setSelectedMunicipalCouncilOption = (v) => {
+    // no-op — the circle value IS the label now; kept for interface compatibility
+    void v;
+  };
+
+  const [selectedWard, setSelectedWard] = useState("");           // ward number as string
+  const [selectedWardLabel, setSelectedWardLabel] = useState(""); // "Ward 12"
+  const [selectedRoads, setSelectedRoads] = useState([]);         // multi-select
+
+  // GeoJSON for the current ward level (without road filter)
+  const [wardGeoJsonData, setWardGeoJsonData] = useState(null);
+
+  // ── Loading flags ─────────────────────────────────────────────────────────
   const [isLoadingMunicipalCouncil, setIsLoadingMunicipalCouncil] = useState(false);
   const [isLoadingWard, setIsLoadingWard] = useState(false);
   const [isLoadingRoad, setIsLoadingRoad] = useState(false);
 
+  // ── Options ───────────────────────────────────────────────────────────────
   const [municipalCouncilOptions, setMunicipalCouncilOptions] = useState([]);
   const [wardOptions, setWardOptions] = useState([]);
   const [roadOptions, setRoadOptions] = useState([]);
 
-  // When city is selected, fetch municipal councils and display all roads on map
+  // ── Helper: fly to GeoJSON ────────────────────────────────────────────────
+  const flyToGeoJson = (geoJson) => {
+    const bounds = getBoundsForGeoJson(geoJson);
+    if (bounds) {
+      setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
+    }
+  };
+
+  // ── LEVEL 1: City selected ────────────────────────────────────────────────
+  // GET /api/filterRoads?city_id=<id>
   useEffect(() => {
     if (selectedCities.length > 0) {
       setIsLoadingMunicipalCouncil(true);
-      const fetchMunicipalCouncils = async () => {
-        try {
-          const cityValue = selectedCities[0].value;
-          console.log("Selected city value for API call:", cityValue);
-          const response = await fetchRoadDataByCity(cityValue);
-          console.log("Municipal Council API Response:", response);
+      const cityId = selectedCities[0].value;
 
-          if (response && response.data) {
-            setFilteredGeoJsonData(response.data);
-            const councils = extractUniqueMunicipalCouncils(response.data);
-            setMunicipalCouncilOptions(councils);
+      const fetch = async () => {
+        try {
+          console.log("Fetching by city_id:", cityId);
+          const geoData = await filterRoads({ city_id: cityId });
+          console.log("City GeoJSON:", geoData);
+
+          if (geoData && isValidGeoJSON(geoData)) {
+            setFilteredGeoJsonData(geoData);
+            const circles = extractUniqueMunicipalCouncils(geoData);
+            setMunicipalCouncilOptions(circles);
           }
-        } catch (error) {
-          console.error("Error fetching municipal councils:", error);
+        } catch (err) {
+          console.error("Error fetching circles for city:", err);
           setMunicipalCouncilOptions([]);
         } finally {
           setIsLoadingMunicipalCouncil(false);
         }
       };
 
-      fetchMunicipalCouncils();
+      fetch();
+      // Reset downstream cascade
       setSelectedMunicipalCouncil("");
-      setSelectedMunicipalCouncilOption(null);
       setSelectedWard("");
       setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
+      setWardOptions([]);
+      setRoadOptions([]);
     } else {
+      // City cleared — reset everything
       setMunicipalCouncilOptions([]);
       setWardOptions([]);
       setRoadOptions([]);
       setSelectedMunicipalCouncil("");
-      setSelectedMunicipalCouncilOption(null);
       setSelectedWard("");
       setSelectedWardLabel("");
       setSelectedRoads([]);
@@ -146,41 +182,49 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
     }
   }, [selectedCities]);
 
-  // When municipal council is selected, fetch unique wards from API
+  // ── LEVEL 2: Circle selected ──────────────────────────────────────────────
+  // GET /api/filterRoads?city_id=<id>&circle=<circle>
   useEffect(() => {
-    if (selectedMunicipalCouncilOption && selectedMunicipalCouncilOption.road_id) {
+    if (selectedMunicipalCouncil && selectedCities.length > 0) {
       setIsLoadingWard(true);
-      const fetchWards = async () => {
-        try {
-          const roadId = selectedMunicipalCouncilOption.road_id;
-          console.log("Fetching wards for road_id:", roadId);
-          const response = await fetchUniqueWards(roadId);
-          console.log("Wards API Response:", response);
+      const cityId = selectedCities[0].value;
+      const circle = selectedMunicipalCouncil;
 
-          if (response && response.wards) {
-            const wardOpts = response.wards
-              .filter((ward) => ward !== null && ward !== undefined)
-              .map((ward) => ({
-                label: `Ward ${ward}`,
-                value: String(ward),
-              }));
-            setWardOptions(wardOpts);
-          } else {
-            setWardOptions([]);
+      const fetch = async () => {
+        try {
+          console.log("Fetching by circle:", circle);
+          const geoData = await filterRoads({ city_id: cityId, circle });
+          console.log("Circle GeoJSON:", geoData);
+
+          if (geoData && isValidGeoJSON(geoData)) {
+            setFilteredGeoJsonData(geoData);
+
+            // Extract unique wards from the returned features
+            const wardSet = new Set();
+            geoData.features.forEach((f) => {
+              const w = f.properties?.ward ?? f.properties?.div_code;
+              if (w !== null && w !== undefined) wardSet.add(w);
+            });
+            const opts = Array.from(wardSet)
+              .sort((a, b) => Number(a) - Number(b))
+              .map((w) => ({ label: `Ward ${w}`, value: String(w) }));
+            setWardOptions(opts);
           }
-        } catch (error) {
-          console.error("Error fetching wards:", error);
+        } catch (err) {
+          console.error("Error fetching wards for circle:", err);
           setWardOptions([]);
         } finally {
           setIsLoadingWard(false);
         }
       };
 
-      fetchWards();
+      fetch();
+      // Reset downstream cascade
       setSelectedWard("");
       setSelectedWardLabel("");
       setSelectedRoads([]);
       setWardGeoJsonData(null);
+      setRoadOptions([]);
     } else {
       setWardOptions([]);
       setSelectedWard("");
@@ -188,56 +232,36 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
       setSelectedRoads([]);
       setWardGeoJsonData(null);
     }
-  }, [selectedMunicipalCouncilOption]);
+  }, [selectedMunicipalCouncil]);
 
-  // When ward is selected, fetch roads and display on map (filter out "No Name" roads)
+  // ── LEVEL 3: Ward selected ────────────────────────────────────────────────
+  // GET /api/filterRoads?city_id=<id>&circle=<circle>&ward=<ward>
   useEffect(() => {
-    if (selectedWard && selectedCities.length > 0) {
+    if (selectedWard && selectedCities.length > 0 && selectedMunicipalCouncil) {
       setIsLoadingRoad(true);
-      const fetchRoads = async () => {
+      const cityId = selectedCities[0].value;
+      const circle = selectedMunicipalCouncil;
+      const ward   = Number(selectedWard);
+
+      const fetch = async () => {
         try {
-          const cityId = selectedCities[0].value;
-          console.log("Fetching roads for cityId:", cityId, "ward:", selectedWard);
-          const response = await fetchRoadsByWard(cityId, selectedWard);
-          console.log("Roads API Response:", response);
+          console.log("Fetching by ward:", ward);
+          const geoData = await filterRoads({ city_id: cityId, circle, ward });
+          console.log("Ward GeoJSON:", geoData);
 
-          if (response && response.data) {
-            // Include all roads (do not filter out No Name roads)
-            let cleanedGeoJson = response.data;
+          if (geoData && isValidGeoJSON(geoData) && geoData.features.length > 0) {
+            setWardGeoJsonData(geoData);
+            setFilteredGeoJsonData(geoData);
+            flyToGeoJson(geoData);
 
-            // Filter locally by ward to ensure map only shows roads for the selected ward
-            if (cleanedGeoJson && Array.isArray(cleanedGeoJson.features)) {
-              cleanedGeoJson = {
-                ...cleanedGeoJson,
-                features: cleanedGeoJson.features.filter(
-                  (f) => String(f.properties?.ward) === String(selectedWard)
-                )
-              };
-            }
-
-            // Store for later road filtering
-            setWardGeoJsonData(cleanedGeoJson);
-
-            // Display on map
-            if (isValidGeoJSON(cleanedGeoJson) && cleanedGeoJson.features.length > 0) {
-              setFilteredGeoJsonData(cleanedGeoJson);
-
-              // Fly to fit roads (smooth transition)
-              const bounds = getBoundsForGeoJson(cleanedGeoJson);
-              if (bounds) {
-                setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
-              }
-            }
-
-            // Extract road names for dropdown
-            const roads = extractUniqueRoads(cleanedGeoJson);
+            const roads = extractUniqueRoads(geoData);
             setRoadOptions(roads);
           } else {
-            setRoadOptions([]);
             setWardGeoJsonData(null);
+            setRoadOptions([]);
           }
-        } catch (error) {
-          console.error("Error fetching roads:", error);
+        } catch (err) {
+          console.error("Error fetching roads for ward:", err);
           setRoadOptions([]);
           setWardGeoJsonData(null);
         } finally {
@@ -245,7 +269,7 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
         }
       };
 
-      fetchRoads();
+      fetch();
       setSelectedRoads([]);
     } else {
       setRoadOptions([]);
@@ -254,33 +278,28 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
     }
   }, [selectedWard]);
 
-  // When road selection changes (checkbox toggle), filter map to show only selected roads
+  // ── LEVEL 4: Road(s) selected ─────────────────────────────────────────────
+  // Filter the already-fetched wardGeoJsonData locally; OR call API for a
+  // single road to get road_id-specific geometry.
   useEffect(() => {
-    if (wardGeoJsonData && selectedRoads.length > 0) {
-      const selectedRoadIds = selectedRoads.map((r) => r.value);
-      const filteredFeatures = wardGeoJsonData.features.filter((feature) =>
-        selectedRoadIds.includes(String(feature.properties?.id))
-      );
-      const filteredData = {
-        ...wardGeoJsonData,
-        features: filteredFeatures,
-      };
+    if (!wardGeoJsonData) return;
+
+    if (selectedRoads.length > 0) {
+      const selectedRoadIds = new Set(selectedRoads.map((r) => String(r.value)));
+
+      const filteredFeatures = wardGeoJsonData.features.filter((feature) => {
+        const props = feature.properties || {};
+        const rid = String(props.road_id ?? props.id ?? "");
+        return selectedRoadIds.has(rid);
+      });
+
+      const filteredData = { ...wardGeoJsonData, features: filteredFeatures };
       setFilteredGeoJsonData(filteredData);
-
-      // Fly to selected roads (smooth transition)
-      const bounds = getBoundsForGeoJson(filteredData);
-      if (bounds) {
-        setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
-      }
-    } else if (wardGeoJsonData && selectedRoads.length === 0) {
-      // Show all named roads in the ward when no specific roads selected
+      flyToGeoJson(filteredData);
+    } else {
+      // No roads selected — show full ward
       setFilteredGeoJsonData(wardGeoJsonData);
-
-      // Fly to all ward roads
-      const bounds = getBoundsForGeoJson(wardGeoJsonData);
-      if (bounds) {
-        setFlyTarget({ center: bounds.center, zoom: bounds.zoom, bounds: bounds.bounds });
-      }
+      flyToGeoJson(wardGeoJsonData);
     }
   }, [selectedRoads]);
 
@@ -289,8 +308,8 @@ export const useFilterCascade = (geoJsonData, setFilteredGeoJsonData, setMapCent
     setSelectedCities,
     selectedMunicipalCouncil,
     setSelectedMunicipalCouncil,
-    selectedMunicipalCouncilOption,
-    setSelectedMunicipalCouncilOption,
+    selectedMunicipalCouncilOption: null,           // kept for interface compatibility
+    setSelectedMunicipalCouncilOption,              // kept for interface compatibility
     selectedWard,
     setSelectedWard,
     selectedWardLabel,
@@ -323,7 +342,6 @@ export const MapFlyTo = ({ flyTarget }) => {
     prevTargetRef.current = targetKey;
 
     if (flyTarget.bounds) {
-      // Use fitBounds for the smoothest/most accurate fit
       const leafletBounds = [
         [flyTarget.bounds[0][0], flyTarget.bounds[0][1]],
         [flyTarget.bounds[1][0], flyTarget.bounds[1][1]],
@@ -346,11 +364,17 @@ export const MapFlyTo = ({ flyTarget }) => {
 };
 
 /**
- * Custom hook to manage map zoom animation for city selection
- * Uses flyTo instead of re-mounting the map
+ * Custom hook to manage map zoom animation for city selection.
+ * Uses flyTo instead of re-mounting the map.
  */
-export const useMapAnimation = (selectedCities, geoJsonData, mapCenter, mapZoom, mapKey, setFlyTarget) => {
-  // City selection animation (fly to city bounds)
+export const useMapAnimation = (
+  selectedCities,
+  geoJsonData,
+  mapCenter,
+  mapZoom,
+  mapKey,
+  setFlyTarget
+) => {
   useEffect(() => {
     if (selectedCities && selectedCities.length > 0) {
       const bounds = getBoundsForCities(geoJsonData, selectedCities);
@@ -366,10 +390,41 @@ export const useMapAnimation = (selectedCities, geoJsonData, mapCenter, mapZoom,
   }, [selectedCities, geoJsonData]);
 
   return {
-    // No longer returning animated values — we use the original ones
-    // and let MapFlyTo handle smooth transitions
     animatedMapCenter: mapCenter,
     animatedMapZoom: mapZoom,
     animatedMapKey: mapKey,
   };
+};
+
+/**
+ * Hook to fetch and reactively update Region Overview statistics.
+ *
+ * Re-fetches whenever `selectedCityId` changes (pass null for global stats).
+ *
+ * @param {number|string|null} selectedCityId - city_id (dataset_id) to filter by
+ * @returns {{ overviewData, isLoadingOverview }}
+ */
+export const useRegionOverview = (selectedCityId) => {
+  const [overviewData, setOverviewData] = useState(null);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingOverview(true);
+      try {
+        const data = await fetchRegionOverview(selectedCityId ?? null);
+        if (!cancelled) setOverviewData(data);
+      } catch (err) {
+        console.error("Region overview error:", err);
+        if (!cancelled) setOverviewData(null);
+      } finally {
+        if (!cancelled) setIsLoadingOverview(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [selectedCityId]);
+
+  return { overviewData, isLoadingOverview };
 };

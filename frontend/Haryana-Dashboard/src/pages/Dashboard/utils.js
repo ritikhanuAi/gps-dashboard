@@ -1,25 +1,25 @@
 /**
- * Extract unique cities from GeoJSON data
+ * Extract unique cities from GeoJSON data.
+ * Supports new API shape: { city_id, city_name } as well as legacy { id, city }.
  */
 export const extractUniqueCities = (geoData) => {
   if (!geoData || !Array.isArray(geoData.features)) return [];
 
-  const uniqueCitiesMap = new Map(); // Use Map to store city with its ID
+  const uniqueCitiesMap = new Map();
   geoData.features.forEach((feature) => {
-    const city = feature.properties?.city;
-    const cityId = feature.properties?.id; // Extract city ID from properties
-    if (city && cityId) {
-      // Store by city name to ensure uniqueness, keeping the ID
-      if (!uniqueCitiesMap.has(city)) {
-        uniqueCitiesMap.set(city, cityId);
+    const props = feature.properties || {};
+    // New API: city_id + city_name; fall back to legacy: id + city
+    const cityId   = props.city_id   ?? props.id;
+    const cityName = props.city_name ?? props.city;
+    if (cityId && cityName) {
+      if (!uniqueCitiesMap.has(cityId)) {
+        const label = cityName.charAt(0).toUpperCase() + cityName.slice(1);
+        uniqueCitiesMap.set(cityId, { label, value: cityId });
       }
     }
   });
 
-  return Array.from(uniqueCitiesMap).map(([city, cityId]) => ({
-    label: city.charAt(0).toUpperCase() + city.slice(1),
-    value: cityId, // Use the actual ID from properties
-  }));
+  return Array.from(uniqueCitiesMap.values());
 };
 
 /**
@@ -27,19 +27,17 @@ export const extractUniqueCities = (geoData) => {
  */
 export const filterGeoJsonByCities = (geoData, selectedCities) => {
   if (!selectedCities || selectedCities.length === 0) {
-    return geoData; // Return all data if no cities selected
+    return geoData;
   }
 
-  const selectedCityIds = selectedCities.map(city => city.value); // Use value which is now the city ID
-  const filteredFeatures = geoData.features.filter((feature) =>
-    feature.properties?.id &&
-    selectedCityIds.includes(feature.properties.id)
-  );
+  const selectedCityIds = selectedCities.map(city => city.value);
+  const filteredFeatures = geoData.features.filter((feature) => {
+    const props = feature.properties || {};
+    const id = props.city_id ?? props.id;
+    return id && selectedCityIds.includes(id);
+  });
 
-  return {
-    ...geoData,
-    features: filteredFeatures
-  };
+  return { ...geoData, features: filteredFeatures };
 };
 
 /**
@@ -50,13 +48,13 @@ export const getBoundsForCities = (geoJsonData, cities = []) => {
 
   let featuresToCheck = geoJsonData.features;
 
-  // If cities are selected, filter features by city ID
   if (cities && cities.length > 0) {
-    const selectedCityIds = cities.map(city => city.value); // Use value which is now the city ID
-    featuresToCheck = geoJsonData.features.filter((feature) =>
-      feature.properties?.id &&
-      selectedCityIds.includes(feature.properties.id)
-    );
+    const selectedCityIds = cities.map(city => city.value);
+    featuresToCheck = geoJsonData.features.filter((feature) => {
+      const props = feature.properties || {};
+      const id = props.city_id ?? props.id;
+      return id && selectedCityIds.includes(id);
+    });
   }
 
   if (featuresToCheck.length === 0) return null;
@@ -239,23 +237,27 @@ export const getFeatureStyle = (feature, viewMode = "general") => {
  * Extract unique municipal councils from GeoJSON data
  * Removes spaces, converts to lowercase for value, but keeps nice display name
  */
+/**
+ * Extract unique circles (municipal councils) from GeoJSON data.
+ * Supports new API shape: { circle } as well as legacy { municipal_council }.
+ */
 export const extractUniqueMunicipalCouncils = (geoData) => {
   if (!geoData || !Array.isArray(geoData.features)) return [];
 
   const uniqueCouncils = new Map();
 
   geoData.features.forEach((feature) => {
-    if (feature.properties?.municipal_council) {
-      const councilName = feature.properties.municipal_council;
-      const roadId = feature.properties?.id; // Extract road_id for ward API calls
-      // Create value: remove spaces and lowercase, Keep label as original but capitalize
-      const value = councilName.replace(/\s+/g, "").toLowerCase();
-      const label = councilName.charAt(0).toUpperCase() + councilName.slice(1).toLowerCase();
+    const props = feature.properties || {};
+    // New API uses `circle`; legacy used `municipal_council`
+    const circleName = props.circle ?? props.municipal_council;
+    if (!circleName) return;
 
-      // Use Map to ensure uniqueness by value, store road_id for ward fetching
-      if (!uniqueCouncils.has(value)) {
-        uniqueCouncils.set(value, { label, value, road_id: roadId });
-      }
+    // value = the raw circle string (sent back to the API as-is)
+    const value = circleName.trim();
+    const label = value.charAt(0).toUpperCase() + value.slice(1);
+
+    if (!uniqueCouncils.has(value)) {
+      uniqueCouncils.set(value, { label, value });
     }
   });
 
@@ -266,29 +268,33 @@ export const extractUniqueMunicipalCouncils = (geoData) => {
  * Extract unique roads from GeoJSON data
  * Uses the 'name' property for road display name
  */
+/**
+ * Extract unique roads from GeoJSON data.
+ * Supports new API shape: { road_id, road_name } as well as legacy { id, name }.
+ */
 export const extractUniqueRoads = (geoData) => {
   if (!geoData || !Array.isArray(geoData.features)) return [];
 
   const uniqueRoads = new Map();
 
   geoData.features.forEach((feature) => {
-    const roadName = feature.properties?.name;
-    const roadId = feature.properties?.id;
+    const props = feature.properties || {};
+    // New API: road_id + road_name; legacy: id + name
+    const roadId   = props.road_id   ?? props.id;
+    const roadName = props.road_name ?? props.name;
 
-    if (!roadId) return; // Skip features without an ID
+    if (!roadId) return;
 
-    // Use roadId as key to ensure uniqueness
     if (!uniqueRoads.has(roadId)) {
-      // Determine the display label
       const isUnnamed =
         !roadName ||
-        roadName.trim() === "" ||
-        roadName.trim().toLowerCase() === "no name";
+        roadName.trim() === '' ||
+        roadName.trim().toLowerCase() === 'no name';
 
       uniqueRoads.set(roadId, {
         label: isUnnamed ? `No Name (ID: ${roadId})` : roadName,
         value: String(roadId),
-        isUnnamed, // flag for styling in the dropdown
+        isUnnamed,
       });
     }
   });

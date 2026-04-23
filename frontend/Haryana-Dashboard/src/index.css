@@ -2,6 +2,7 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Legacy tokens ── */
   --bg-light: #ffffff;
   --bg-light-grey: #f6f6f6;
   --bg-dark: #131313;
@@ -20,7 +21,48 @@
   --accent-secondary: #374774;
   --danger-light: #f47a65;
   --danger-lighter: #F58774;
-  --danger: #dc3545;
+
+  /* ── Design System Tokens (Dashboard + Smoothening) ── */
+  --color-primary:       #1E6FD9;
+  --color-primary-hover: #155BB5;
+  --color-heading:  #1A1A2E;
+  --color-text:     #3D3D55;
+  --color-label:    #6B6B80;
+  --color-divider:  #E0E0EA;
+  --color-bg:       #F5F6FA;
+  --color-surface:  #FFFFFF;
+  --color-success-token: #2ECC71;
+  --color-warning-token: #F39C12;
+  --color-error-token:   #E74C3C;
+  --color-info-token:    #3498DB;
+
+  /* Typography */
+  --font-primary: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  26px;
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-bold:    700;
+  --leading-tight:  1.3;
+  --leading-normal: 1.6;
+
+  /* Spacing */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  12px;
+  --space-lg:  16px;
+  --space-xl:  24px;
+  --space-2xl: 32px;
+
+  /* Radius */
+  --radius:    6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 }
 
 /* --------------------myriad pro - primary-------------------- */
@@ -218,4 +260,35 @@ img {
 
 .animate-fade-in-up {
   animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* ── Road r_temp_id tooltip label ───────────────────────────────────── */
+.road-label-tooltip {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f8fafc;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 16px -2px rgba(0,0,0,0.35);
+}
+
+.road-label-tooltip::before {
+  display: none; /* remove default leaflet tooltip arrow */
+}
+
+/* ── GeoJSON layer pointer cursor ───────────────────────────────────── */
+.leaflet-interactive {
+  cursor: crosshair !important;
+}
+
+.leaflet-interactive:hover {
+  cursor: crosshair !important;
 }
