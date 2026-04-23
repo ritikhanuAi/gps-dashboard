@@ -16,12 +16,12 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from dashboard.urls import urlpatterns as dashboard_urls
-from django.urls import include, path
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(dashboard_urls)),
+    path("api/smoothening/", include("smoothening.urls")),
 ]
